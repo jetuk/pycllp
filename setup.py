@@ -19,6 +19,6 @@ cyipo = Extension('pyipo._ipo',
 
 setup(name='pyipo',
       packages=['pyipo'],
-      install_requires=['cython==0.17'],
+      install_requires=['cython>0.17'],
       ext_modules=[cyipo],
       cmdclass = {'build_ext': build_ext})
