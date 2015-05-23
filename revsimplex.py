@@ -10,8 +10,8 @@ Reference: Wayne Winston, Introduction to Mathematical Programming, 2e
 Revisions  2009.02.11  first educational version.
 """
 
+import numpy as np
 
-from matlib import *
 
 def RevSimplex(cz, A, b):
    """
@@ -39,25 +39,23 @@ def RevSimplex(cz, A, b):
    """
    def rscol(A, j):
       print "rscol input j = ", j
-      m = len(A)
-      n = len(A[0])
+      n,m = A.shape
       if j < m:
-         return [A[i][j] for i in range(m)]
+         return A[:,j]
       if j < m+n:
-         E = [0] * m
+         E = [0] * n
          E[j - m] = 1.0
          return E
       print "Error in rscol, j= ", j, "out of bounds"
       return None
 
-   m = len(A)
-   n = len(A[0])
+   n,m = A.shape
    costZ = cz[:]
    costZ.extend([0.0]* m)
 
    Index = range(m, m+n)
 
-   Binv = eye(m)   # B^(-1)
+   Binv = np.eye(n)   # B^(-1)
 
    # starting basis vector cost.
    cbv = []
@@ -74,9 +72,9 @@ def RevSimplex(cz, A, b):
    maxiter = 2 * K
    for iter in range(maxiter):
        print "Iteration #", iter
-
+       print m,n, Binv, cbv
        print "Index=", Index
-       cbvBinv = vectmat(cbv, Binv)
+       cbvBinv = np.dot(cbv, Binv)
        print "iter #", iter, " cbvBinv =", cbvBinv
 
        # Price out each nobasic variables.
@@ -85,7 +83,7 @@ def RevSimplex(cz, A, b):
        for i in range(m+n):
           if i not in Index :
              print "rscol(A, ", i,"= ", rscol(A, i)
-             priceout = dot(cbvBinv, rscol(A, i)) - costZ[i]
+             priceout = np.dot(cbvBinv, rscol(A, i)) - costZ[i]
              print "pricing out variable", i, priceout
              if priceout < minpriceout:
                 minpriceout = priceout
@@ -96,15 +94,15 @@ def RevSimplex(cz, A, b):
           break
        print "entering variable = ", entvar
 
-       BinvAj = matvec (Binv, rscol(A, entvar))
-       Binvb  = matvec(Binv, b)
+       BinvAj = np.dot(Binv, rscol(A, entvar))
+       Binvb  = np.dot(Binv, b)
 
        print "BinvAj=",BinvAj
        print "Binvb =",Binvb
 
        #Ratio Test:
        minratio = 1e30
-       for i in range(m):
+       for i in range(n):
           r = Binvb[i]/BinvAj[i]
           print"i", i, "ratio= ", r
           if r > 0 and r < minratio:
@@ -118,13 +116,13 @@ def RevSimplex(cz, A, b):
 
        #Perform elementary row operations on B^(-1).
        print ("Binv:")
-       matprint(Binv)
+       print(Binv)
 
        # revised  row:
        k = float(BinvAj[minrow])
        print "k = ", k
        # other rows:
-       for i in range(m):
+       for i in range(n):
           if i != minrow:
             mult = BinvAj[i] / k
             print i, mult
@@ -134,14 +132,14 @@ def RevSimplex(cz, A, b):
           Binv[minrow][j] /= k
 
        print "new Basis matrix"
-       matprint (Binv)
+       print(Binv)
    print "cbv= ", cbv
    print "b = ", b
    print "Binv=", Binv
-   Binvb  = matvec(Binv, b)
+   Binvb  = np.dot(Binv, b)
 
    print "Right hand side:", Binvb
-   zmax = dot(cbv, Binvb)
+   zmax = np.dot(cbv, Binvb)
    print "Optimal value = ",
    print "Index=", Index
    return zmax, Index, Binv, Binvb
@@ -160,12 +158,14 @@ if __name__ == "__main__":
    c_B= [0,0,0]
    """
    # Example in Chapter 10 of Winston
-   cz = [60, 30, 20]     # coefficients of variables in objective function.
+   cz = [2,3,4]     # coefficients of variables in objective function.
                          # Program will automatically add subvector
-   A =[[8,    6,   1],   # Coefficient matrix,
-       [4,    2, 1.5],   # Only for "<" constraint equations!
-       [2,  1.5, 0.5]]
-   b = [48,  20, 8]       # Right hand side vector.
+   A = np.array(
+        [[3,2,1],   # Coefficient matrix,
+        [2,5,3]])   # Only for "<" constraint equations!
+
+   b = [10, 15]       # Right hand side vector.
 
    zmax, Index, Binv, Binvb = RevSimplex(cz, A, b)
    print zmax
+   print np.dot(A, Index)
