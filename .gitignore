@@ -1,0 +1,9 @@
+build/
+cython_debug/
+
+.directory
+*.o
+*.a
+*.so
+*.pyc
+*.pyd
