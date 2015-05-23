@@ -1,0 +1,39 @@
+Simpo compilation notes:
+
+
+simpo, without ampl interface, using eta matrices for basis factorization,
+and employing 2 phase simplex method:
+
+        common/noamplio.c
+
+        simpo/2phase.c
+        simpo/lueta.c
+
+        common/cputime.c
+        common/hash.c
+        common/heap.c
+        common/hook.c
+        common/iolp.c
+        common/linalg.c
+        common/main.c
+        common/solve.c
+        common/strdup.c
+        common/tree.c
+
+exchanges:
+
+    using one phase primal-dual simplex method instead of 2 phase method:
+
+        as above except simpo/2phase.c is replaced with simpo/pd.c
+
+    using basis refactorization instead of eta matrices:
+
+        as above except simpo/lueta.c is replace with simpo/lurefac.c
+
+    using AMPL interface instead of MPS files:
+
+        as above except common/noamplio.c is replaced with:
+
+                common/amplio.c
+                ampl/*.c
+
