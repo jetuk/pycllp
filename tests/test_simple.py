@@ -27,10 +27,10 @@ def small_problem():
 
 
 def test_hsd_python():
-    from pyipo.hsd import solver
+    from pyipo.hsd import HSDLP
     args = small_problem()
-
-    status, x, y = solver(*args)
+    lp = HSDLP(*args[:-1] )
+    status, x, y = lp.solve(args[-1])
     assert status == 0
 
 def test_hsd_cython():
