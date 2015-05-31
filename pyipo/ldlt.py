@@ -60,8 +60,8 @@ class LDLTFAC(object):
         self.verbose = verbose
 
         self.diag = None
-        self.iQ = None
-        self.Q = None
+        self.iQ = np.array(0, dtype=np.int)
+        self.Q = np.array(0)
         self.tier = None
         self.max = 0
         self.mark = None
