@@ -8,17 +8,17 @@ common_sources = ['cputime.c', 'hash.c', 'heap.c', 'hook.c', 'iolp.c',
                   'noamplio.c']
 ipo_sources= ['ldlt.c']
 
-all_sources = ['pyipo/cyipo.pyx']
-all_sources += [os.path.join('pyipo','common',src) for src in common_sources]
-all_sources += [os.path.join('pyipo','ipo',src) for src in ipo_sources]
+all_sources = ['pycllp/cyipo.pyx']
+all_sources += [os.path.join('pycllp','common',src) for src in common_sources]
+all_sources += [os.path.join('pycllp','ipo',src) for src in ipo_sources]
 
-cyipo = Extension('pyipo._ipo',
+cyipo = Extension('pycllp._ipo',
     sources = all_sources,
-    include_dirs = ['pyipo/common', 'pyipo/ipo']
+    include_dirs = ['pycllp/common', 'pycllp/ipo']
     )
 
-setup(name='pyipo',
-      packages=['pyipo'],
+setup(name='pycllp',
+      packages=['pycllp'],
       install_requires=['cython>0.17'],
       ext_modules=[cyipo],
       cmdclass = {'build_ext': build_ext})

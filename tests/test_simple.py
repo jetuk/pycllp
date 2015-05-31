@@ -27,7 +27,7 @@ def small_problem(fdtype=np.float64, idtype=np.int32):
 
 
 def test_hsd_python():
-    from pyipo.hsd import HSDLP
+    from pycllp.hsd import HSDLP
     args = small_problem()
     lp = HSDLP(*args[:-1] )
     status, x, y = lp.solve(args[-1])
@@ -37,7 +37,7 @@ def test_hsd_python():
 
 def test_hsd_cython():
 
-    from pyipo._ipo import hsd_solver as solver
+    from pycllp._ipo import hsd_solver as solver
     args = small_problem()
     n = args[1]
     x = np.empty(n)
@@ -56,7 +56,7 @@ def device(request):
 
 def test_hsd_cl(device, ):
 
-    from pyipo.cl.hsd import HSDLP_CL
+    from pycllp.cl.hsd import HSDLP_CL
 
     m, n, nz, iA, kA, A, b, c, f = small_problem(fdtype=np.float32,
                                                  idtype=np.int32)
