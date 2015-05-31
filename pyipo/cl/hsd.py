@@ -246,15 +246,21 @@ class HSDLP_CL(LP):
         cl.enqueue_copy(queue, self.status, status)
         cl.enqueue_copy(queue, self.x, x)
         cl.enqueue_copy(queue, self.y, y)
-        return self.status, self.x, self.y
+
+
+        return (self.status,
+            self.x.reshape((len(self.status),n)),
+            self.y.reshape((len(self.status),m)))
 
 
 if __name__ is '__main__':
 
+
+
+
     print('Creating CL context and queue...')
     ctx = cl.create_some_context()
     queue = cl.CommandQueue(ctx)
-
 
     print(cl.device_info.MAX_WORK_ITEM_DIMENSIONS)
     print(cl.device_info.MAX_WORK_ITEM_SIZES)
@@ -270,7 +276,6 @@ if __name__ is '__main__':
     lp = HSDLP_CL(*args[:-1] )
     lp.init_cl(ctx,)
     status, x, y = lp.solve(ctx, queue, args[-1])
-    x = x.reshape((len(status),n))
 
     for i, stat in enumerate(status):
         print('Solution for problem {}'.format(i))
