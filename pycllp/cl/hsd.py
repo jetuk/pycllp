@@ -9,35 +9,6 @@ from ..lp import LP
 from ..linalg import smx, atnum
 from ..ldlt import LDLTFAC
 
-def small_problem():
-    import numpy as np
-    c = np.array([
-        [2,3,4],
-        [2,3,4],
-        [2,3,4],
-        [2,3,4]], dtype=np.float32)     # coefficients of variables in objective function.
-
-    c *= 0.5+np.random.rand(*c.shape).astype(np.float32)
-
-    A = np.array(
-                [[3,2,1],   # Coefficient matrix,
-                [2,5,3]], dtype=np.float32)   # Only for "<" constraint equations!
-
-    b = np.array([
-        [10, 15],
-        [10, 15],
-        [10, 15],
-        [10, 15]], dtype=np.float32)       # Right hand side vector.
-    m, n = A.shape
-    A = A.T.flatten()
-    nz = len(A)
-    iA = np.array([0, 1, 0, 1, 0, 1], dtype=np.int32)
-    kA = np.array([0, 2, 4, 6], dtype=np.int32)
-    f = 0.001
-
-    return m, n, nz, iA, kA, A, b, c, f
-
-
 EPS = 1.0e-12
 MAX_ITER = 200
 
@@ -251,33 +222,3 @@ class HSDLP_CL(LP):
         return (self.status,
             self.x.reshape((len(self.status),n)),
             self.y.reshape((len(self.status),m)))
-
-
-if __name__ is '__main__':
-
-
-
-
-    print('Creating CL context and queue...')
-    ctx = cl.create_some_context()
-    queue = cl.CommandQueue(ctx)
-
-    print(cl.device_info.MAX_WORK_ITEM_DIMENSIONS)
-    print(cl.device_info.MAX_WORK_ITEM_SIZES)
-    print(cl.device_info.MAX_WORK_GROUP_SIZE)
-
-    m, n, nz, iA, kA, A, b, c, f = small_problem()
-
-    print('Creating problem...')
-
-
-    from pyipo.hsd import HSDLP
-    args = small_problem()
-    lp = HSDLP_CL(*args[:-1] )
-    lp.init_cl(ctx,)
-    status, x, y = lp.solve(ctx, queue, args[-1])
-
-    for i, stat in enumerate(status):
-        print('Solution for problem {}'.format(i))
-        print('Status {:d}'.format(stat))
-        print('x',x[i,:])
