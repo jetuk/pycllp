@@ -4,8 +4,8 @@ void fill(
   float val
   ) {
 
-    int gid = get_global_id(0);
-    x[gid] = val;
+    int wgid = get_group_id(0);
+    x[wgid] = val;
   }
 
 void dotprod(
@@ -16,12 +16,12 @@ void dotprod(
   ) {
     int i;
     (*res) = 0.0;
-
     int lid = get_local_id(0);
     int gid = get_global_id(0);
+    int wgid = get_group_id(0);
 
     for (i=0; i<n; i++) {
-      (*res) += x[gid*n+i]*y[gid*n+i];
+      (*res) += x[wgid*n+i]*y[wgid*n+i];
     }
 
   }
@@ -76,11 +76,13 @@ void smx(
   int i,j,k;
   int lid = get_local_id(0);
   int gid = get_global_id(0);
+  int wgid = get_group_id(0);
 
-  for (i=0; i<m; i++) y[gid*m+i] = 0.0e0;
+
+  for (i=0; i<m; i++) y[wgid*m+i] = 0.0e0;
   for (j=0; j<n; j++)
           for (k=ka[j]; k<ka[j+1]; k++)
-                  y[gid*m+ia[k]] += a[k]*x[gid*n+j];
+                  y[wgid*m+ia[k]] += a[k]*x[wgid*n+j];
 
 }
 

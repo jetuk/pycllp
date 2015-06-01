@@ -21,7 +21,7 @@
 
 void lltnum(
   int m, int n, float _max,  int denwin, int ndep,
-  __global float* diag,
+  __local float* diag,
   __global float* perm,
   __global int* iperm,
   __global float* A,
@@ -159,7 +159,7 @@ void lltnum(
 
 __kernel void inv_num(
   int m, int n, float _max, int denwin, int ndep,
-  __global float* diag,
+  __local float* diag,
   __global float* perm,
   __global int* iperm,
   __global float* At,
@@ -260,7 +260,7 @@ __kernel void inv_num(
 
 void rawsolve(
 	int m, int n, int ndep,
-  __global float* diag,
+  __local float* diag,
   __local float* AAt,
   __global int* iAAt,
   __global int* kAAt,
@@ -350,7 +350,7 @@ void rawsolve(
 
 void forwardbackward(
   int m, int n, int _max, int ndep,
-  __global float* diag,
+  __local float* diag,
   __global int* iperm,
   __global float* At,
   __global int* iAt,
@@ -438,7 +438,7 @@ void forwardbackward(
       maxv_l(s,n,&temp2);
 	    maxrs = fmax( temp1,temp2 );
 
-	    /* --- for tuning purposes --- */
+	    /* --- for tuning purposes ---
       #if __OPENCL_C_VERSION__ >= CL_VERSION_1_2
 	    if (TRUE) {
         maxv_l(s,n,&temp1);
@@ -447,6 +447,7 @@ void forwardbackward(
 		   pass, temp1, temp2, maxrs/maxbc );
 	    }
       #endif
+      */
 
 
 	    pass++;

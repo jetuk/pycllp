@@ -33,8 +33,8 @@ class HSDLP_CL(LP):
         kA = self.kA
         iA = self.iA
         A = self.A
-        b = self.b
-        c= self.c
+        b = self.b.reshape(np.prod(self.b.shape))
+        c= self.c.reshape(np.prod(self.c.shape))
 
         self.local_size = 1
         self.global_size = nlp*self.local_size
@@ -62,11 +62,11 @@ class HSDLP_CL(LP):
             for i in range(m):
                 for j in range(n):
                     print(" {:5.1f}".format(AA[i][j]), end="")
-                print("<= {:5.1f}".format(b[0, i]))
+                print("<= {:5.1f}".format(b[i]))
             print("\nc:")
 
             for j in range(n):
-                print(" {:5.1f}".format(c[0, j]), end="")
+                print(" {:5.1f}".format(c[j]), end="")
 
             print("")
 
@@ -121,8 +121,9 @@ class HSDLP_CL(LP):
         # Must convert to correct dtypes first
 
         self.diag = ldltfac.diag.astype(np.float32)
-        self.g_diag = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
-                                hostbuf=self.diag)
+        #self.g_diag = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
+        #                        hostbuf=self.diag)
+        self.l_diag = cl.LocalMemory(self.diag.nbytes)
         print('diag',self.diag)
         self.perm = ldltfac.perm.astype(np.int32)
         self.g_perm = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
@@ -198,7 +199,7 @@ class HSDLP_CL(LP):
         iQ = self.g_iQ
         kQ = self.g_kQ
 
-        diag = self.g_diag
+        diag = self.l_diag
         perm = self.g_perm
         iperm = self.g_iperm
 

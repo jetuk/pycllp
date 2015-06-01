@@ -2,7 +2,7 @@
 #include <linalg.h>
 #include <ldlt.h>
 
-#define EPS 1.0e-6
+#define EPS 1.0e-7
 #define MAX_ITER 200
 
 __kernel void hsd(
@@ -13,7 +13,7 @@ __kernel void hsd(
   __global float* z,
   __global float* y,
   __global float* w,
-  __global float* diag,
+  __local float* diag,
   __global float* perm,
   __global int* iperm,
   __global float* A,
@@ -172,8 +172,8 @@ __kernel void hsd(
       * Print statistics.
       *************************************************************/
       #if __OPENCL_C_VERSION__ >= CL_VERSION_1_2
-      printf("%8d   %14.7e  %8.1e    %14.7e  %8.1e  %8.1e \n",
-        iter, (primal_obj/phi+f), normr,
+      printf("%8d %8d %8d %8d   %14.7e  %8.1e    %14.7e  %8.1e  %8.1e \n",
+        wgid, gid, lid, iter, (primal_obj/phi+f), normr,
               (dual_obj/phi+f),   norms, mu );
       #endif
 
@@ -197,8 +197,8 @@ __kernel void hsd(
       E, D, fy, fx, _fwork, consistent
       );
 
-      for (j=0; j<n; j++) { gx[j] = -c[j]; }
-      for (i=0; i<m; i++) { gy[i] = -b[i]; }
+      for (j=0; j<n; j++) { gx[j] = -c[n0+j]; }
+      for (i=0; i<m; i++) { gy[i] = -b[m0+i]; }
 
       forwardbackward(n, m, _max, ndep, diag, iperm, A, iA, kA, At, iAt, kAt,
       AAt, iAAt, kAAt, Q, iQ, kQ, mark,

@@ -1,6 +1,6 @@
 __kernel void inv_num(
   int m, int n, float _max, int denwin, int ndep,
-  __global float* diag,
+  __local float* diag,
   __global float* perm,
   __global int* iperm,
   __global float* A,
@@ -23,7 +23,7 @@ __kernel void inv_num(
 );
 void lltnum(
   int m, int n, float _max,  int denwin, int ndep,
-  __global float* diag,
+  __local float* diag,
   __global float* perm,
   __global int* iperm,
   __global float* A,
@@ -46,7 +46,7 @@ void lltnum(
 );
 void forwardbackward(
   int m, int n, int _max, int ndep,
-  __global float* diag,
+  __local float* diag,
   __global int* iperm,
   __global float* A,
   __global int* iA,
