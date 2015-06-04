@@ -7,23 +7,50 @@ from __future__ import print_function
 import numpy as np
 import pytest
 import pyopencl as cl
-
+from pycllp.solvers import solver_registry
 
 def small_problem(fdtype=np.float64, idtype=np.int32):
-    c = np.array([2,3,4], dtype=fdtype)     # coefficients of variables in objective function.
-    A = np.array(
-                [[3,2,1],   # Coefficient matrix,
-                [2,5,3]], dtype=fdtype)   # Only for "<" constraint equations!
-
-    b = np.array([10, 15], dtype=fdtype)       # Right hand side vector.
-    m, n = A.shape
-    A = A.T.flatten()
-    nz = len(A)
+    from scipy.sparse import csc_matrix
+    A = np.array([3,2,2,5,1,3], dtype=fdtype)   # Only for "<" constraint equations!
     iA = np.array([0, 1, 0, 1, 0, 1], dtype=idtype)
     kA = np.array([0, 2, 4, 6], dtype=idtype)
-    f = 0.001
+    A = csc_matrix((A,iA,kA))
 
-    return m, n, nz, iA, kA, A, b, c, f
+    b = np.array([10, 15], dtype=fdtype)       # Right hand side vector.
+    c = np.array([2,3,4], dtype=fdtype)     # coefficients of variables in objective function.
+
+    print(A.todense())
+    return A, b, c
+
+
+@pytest.mark.parametrize("name,solver_cls",
+    [(n,s) for n,s in solver_registry.items()])
+def test_solvers(name, solver_cls):
+    from pycllp.lp import StandardLP
+    lp = StandardLP(*small_problem())
+
+    solver_args = []
+    if solver_cls.name == 'clhsd':
+        ctx = cl.create_some_context()
+        queue = cl.CommandQueue(ctx)
+
+        solver_args.extend([ctx, queue])
+
+
+    solver = solver_cls(*solver_args)
+    lp.init(solver)
+    status = lp.solve(solver)
+
+
+    np.testing.assert_equal(solver.status, 0)
+    np.testing.assert_almost_equal(np.squeeze(solver.x), (0.0,0.0,5.0))
+
+
+"""
+
+@pytest.fixture(params=[d for p in cl.get_platforms() for d in p.get_devices()])
+def device(request):
+    return request.param
 
 
 def test_hsd_python():
@@ -73,3 +100,4 @@ def test_hsd_cl(device, ):
     status, x, y = lp.solve(ctx, queue, f)
     assert status[0] == 0
     np.testing.assert_almost_equal(x[0,:], (0.0,0.0,5.0), decimal=5)
+"""

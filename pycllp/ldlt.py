@@ -9,9 +9,9 @@ Port to Python
     2015
 """
 import numpy as np
-from lp import LP
 from linalg import smx
 import sys
+from . import BDD_BELOW, INFINITE, FREEVAR, UNCONST
 
 HUGE_VAL = sys.float_info.max
 
@@ -46,8 +46,8 @@ class LDLTFAC(object):
         self.bndmark = np.zeros(n, dtype=np.int)
         self.rngmark = np.zeros(m, dtype=np.int)
 
-        self.bndmark[...] = LP.BDD_BELOW
-        self.rngmark[...] = LP.INFINITE
+        self.bndmark[...] = BDD_BELOW
+        self.rngmark[...] = INFINITE
 
         self.m = m
         self.n = n
@@ -642,6 +642,7 @@ class LDLTFAC(object):
 
         for j in range(n):
             ne = kA[j+1] - kA[j] + kQ[j+1] - kQ[j]
+            print j, ne, kA
             nbrs[j] = np.empty(ne, dtype=np.int)
             ne = 0
             for k in range(kA[j], kA[j+1]):
@@ -653,7 +654,6 @@ class LDLTFAC(object):
                     ne+=1
 
             degree[j] = ne
-
 
         for i in range(m):
             ne = kAt[i+1] - kAt[i]
@@ -674,16 +674,16 @@ class LDLTFAC(object):
             n1 = 0
             if pdf == self._PRIMAL:
                 for j in range(n):
-                    if bndmark[j] != LP.FREEVAR:
+                    if bndmark[j] != FREEVAR:
                         self.tier[j] = 0  # 0
                     else:
                         self.tier[j] = 1  # 2
 
                 for i in range(m):
-                    if rngmark[i] == LP.UNCONST:
+                    if rngmark[i] == UNCONST:
                         self.tier[n+i] = 1  # 4
                         n1+=1
-                    elif rngmark[i] == LP.INFINITE:
+                    elif rngmark[i] == INFINITE:
                         self.tier[n+i] = 1  # 1
                     else:
                         self.tier[n+i] = 1  # 3
@@ -691,16 +691,16 @@ class LDLTFAC(object):
 
             else:
                 for j in range(n):
-                    if bndmark[j] != LP.FREEVAR:
+                    if bndmark[j] != FREEVAR:
                         self.tier[j] = 1  # 1
                     else:
                         self.tier[j] = 1  # 3
                         n1+=1
 
                 for i in range(m):
-                    if rngmark[i] == LP.UNCONST:
+                    if rngmark[i] == UNCONST:
                         self.tier[n+i] = 1  # 4
-                    elif rngmark[i] == LP.INFINITE:
+                    elif rngmark[i] == INFINITE:
                         self.tier[n+i] = 0  # 0
                     else:
                         self.tier[n+i] = 1  # 2
@@ -987,6 +987,7 @@ class LDLTFAC(object):
                 degree[nbr]-=1
                 nbr_deg = degree[nbr]
                 kk = 0
+                print nbrs
                 while nbr_nbrs[kk] != node:
                     kk+=1
                 for kk in range(kk,nbr_deg):

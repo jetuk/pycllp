@@ -1,41 +1,61 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+
 
 from __future__ import print_function
 import numpy as np
 import pyopencl as cl
 import os
-from ..lp import LP
 from ..linalg import smx, atnum
 from ..ldlt import LDLTFAC
+from . import BaseSolver
+import numpy as np
 
 EPS = 1.0e-12
 MAX_ITER = 200
 
-class HSDLP_CL(LP):
-    def __init__(self, m, n, nz, iA, kA, A, b, c, ):
-        LP.__init__(self, m, n, nz, iA, kA, A, b, c,)
-        assert b.ndim == 2
-        assert c.ndim == 2
-        assert b.shape[0] == c.shape[0]
+
+class ClHSDSolver(BaseSolver):
+    name = 'clhsd'
+
+    def __init__(self, ctx, queue):
+        self.ctx = ctx
+        self.queue = queue
+
+    def init(self, A, b, c, f=0.0):
+        self.A = A.tocsc()
+        if not self.A.has_sorted_indices:
+            self.A.sort_indices()
+
+        self.b = b
+        if self.b.ndim == 1:
+            self.b = np.reshape(b, (1, len(b)))
+
+        self.c = c
+        if self.c.ndim == 1:
+            self.c = np.reshape(c, (1, len(c)))
+
         # Number of simultaneous problems each to be solved in a
         # cl workgroup
-        self.nlp = b.shape[0]
+        self.nlp = self.b.shape[0]
+        self.f = f
+
+        self.init_cl(self,)
 
 
-    def init_cl(self, ctx, verbose=0):
+
+    def init_cl(self, verbose=0):
         """Setup problem on the cl context
         """
-        n = self.n
-        m = self.m
-        nz = self.nz
+        ctx = self.ctx
+        n = self.A.shape[1]
+        m = self.A.shape[0]
+        nz = self.A.nnz
         nlp = self.nlp
-        kA = self.kA
-        iA = self.iA
-        A = self.A
+        kA = self.A.indptr.astype(np.int32)
+        iA = self.A.indices.astype(np.int32)
+        A = self.A.data.astype(np.float32)
         b = self.b.reshape(np.prod(self.b.shape))
         c= self.c.reshape(np.prod(self.c.shape))
-
+        print (b, c, nlp)
         self.local_size = 1
         self.global_size = nlp*self.local_size
 
@@ -161,6 +181,7 @@ class HSDLP_CL(LP):
 
         print('Creating OpenCL program...')
         path = os.path.dirname(__file__)
+        path = os.path.join(path, '..','cl')
         build_opts = '-I '+path
 
         src_files = ['hsd.cl', 'linalg.cl', 'ldlt.cl']
@@ -171,13 +192,15 @@ class HSDLP_CL(LP):
         self.cl_prg = cl.Program(ctx, src).build(options=build_opts)
 
 
-    def solve(self, ctx, queue, f):
+    def solve(self,):
+        ctx = self.ctx
+        queue = self.queue
 
         ls = (self.local_size,)
         gs = (self.global_size,)
 
-        m = np.int32(self.m)
-        n = np.int32(self.n)
+        m = np.int32(self.A.shape[0])
+        n = np.int32(self.A.shape[1])
         denwin = np.int32(self.denwin)
         c = self.g_c
         b = self.g_b
@@ -220,6 +243,8 @@ class HSDLP_CL(LP):
         cl.enqueue_copy(queue, self.y, y)
 
 
+        self.x = self.x.reshape((len(self.status),n))
+        self.y = self.y.reshape((len(self.status),m))
+
         return (self.status,
-            self.x.reshape((len(self.status),n)),
-            self.y.reshape((len(self.status),m)))
+            self.x, self.y)
