@@ -38,7 +38,7 @@ class ClHSDSolver(BaseSolver):
         self.nlp = self.b.shape[0]
         self.f = f
 
-        self.init_cl(self,)
+        self.init_cl()
 
 
 

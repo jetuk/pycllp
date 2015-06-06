@@ -9,7 +9,7 @@ Port to Python
     2015
 """
 import numpy as np
-from linalg import smx
+from .linalg import smx
 import sys
 from . import BDD_BELOW, INFINITE, FREEVAR, UNCONST
 
@@ -642,7 +642,7 @@ class LDLTFAC(object):
 
         for j in range(n):
             ne = kA[j+1] - kA[j] + kQ[j+1] - kQ[j]
-            print j, ne, kA
+            print(j, ne, kA)
             nbrs[j] = np.empty(ne, dtype=np.int)
             ne = 0
             for k in range(kA[j], kA[j+1]):
@@ -987,7 +987,7 @@ class LDLTFAC(object):
                 degree[nbr]-=1
                 nbr_deg = degree[nbr]
                 kk = 0
-                print nbrs
+                print(nbrs)
                 while nbr_nbrs[kk] != node:
                     kk+=1
                 for kk in range(kk,nbr_deg):

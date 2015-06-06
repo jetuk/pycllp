@@ -10,7 +10,9 @@
 /*
 #include <dmalloc.h>
 */
+#ifndef __APPLE__
 #include <malloc.h>
+#endif
 
 #undef MALLOC
 #define	MALLOC(name,len,type) {	\

@@ -1,13 +1,17 @@
+from six import with_metaclass
+
 solver_registry = {}
 
-class BaseSolver(object):
-    class __metaclass__(type):
-        def __init__(cls, name, bases, dct):
-            type.__init__(cls, name, bases, dct)
-            if cls.name is not None:
-                solver_registry[cls.name] = cls
-    name = None
+class MetaSolver(type):
+    def __new__(cls, clsname, bases, attrs):
+        newclass = super(MetaSolver, cls).__new__(cls, clsname, bases, attrs)
+        if newclass.name is not None:
+            solver_registry[newclass.name] = newclass
+        return newclass
 
+class BaseSolver(with_metaclass(MetaSolver)):
+    name = None
+    
     def init(self, A, b, c, f=0.0):
         raise NotImplementedError()
 
@@ -16,6 +20,6 @@ class BaseSolver(object):
 
 
 # register solvers
-from cython import CyHSDSolver
-from hsd import HSDSolver
-from cl import ClHSDSolver
+from .cython import CyHSDSolver
+from .hsd import HSDSolver
+from .cl import ClHSDSolver
