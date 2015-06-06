@@ -14,7 +14,7 @@ non_cl_solvers = [(n,s) for n,s in solver_registry.items() if not n.startswith('
 cl_solvers = [(n,s) for n,s in solver_registry.items() if n.startswith('cl')]
 devices = [d for p in cl.get_platforms() for d in p.get_devices()]
 
-def small_problem(fdtype=np.float64, idtype=np.int32):
+def small_problem():
     from scipy.sparse import csc_matrix
     A = np.array([3,2,2,5,1,3], dtype=fdtype)   # Only for "<" constraint equations!
     iA = np.array([0, 1, 0, 1, 0, 1], dtype=idtype)
