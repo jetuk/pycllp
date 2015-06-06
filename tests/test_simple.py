@@ -37,7 +37,9 @@ def parallel_small_problem(N=10):
 
     b = (0.5+np.random.rand( N,len(b) ))*b
     c = (0.5+np.random.rand( N,len(c) ))*c
-
+    print('A',A)
+    print('b',b)
+    print('c',c)
     return A, b, c
 
 
@@ -81,10 +83,11 @@ def test_cl_solvers_parallel(device, name, solver_cls):
     lp.init(solver)
     lp.solve(solver)
 
-    cysolver = solver_registry['hsd']()
-    lp.init(cysolver)
-    lp.solve(cysolver)
+    pysolver = solver_registry['hsd']()
+    lp.init(pysolver)
+    lp.solve(pysolver)
 
-    np.testing.assert_almost_equal(np.squeeze(solver.status), np.squeeze(cysolver.status),)
-    np.testing.assert_almost_equal(np.squeeze(solver.x), np.squeeze(cysolver.x),
-        decimal=4)
+    np.testing.assert_almost_equal(solver.status, pysolver.status,)
+    np.testing.assert_almost_equal(
+                np.sum(solver.x*c,axis=1),
+                np.sum(pysolver.x*c,axis=1), decimal=4)
