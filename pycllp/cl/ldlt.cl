@@ -393,7 +393,7 @@ void forwardbackward(
 
 	maxbc = fmax( temp1, temp2 ) + 1;
 
-	maxrs = HUGE_VAL;
+	maxrs = HUGE_VALF;
 	do {
 	    if (pass == 0) {
                 for (j=0; j<n; j++) {
