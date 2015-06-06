@@ -21,22 +21,7 @@ class ClHSDSolver(BaseSolver):
         self.queue = queue
 
     def init(self, A, b, c, f=0.0):
-        self.A = A.tocsc()
-        if not self.A.has_sorted_indices:
-            self.A.sort_indices()
-
-        self.b = b
-        if self.b.ndim == 1:
-            self.b = np.reshape(b, (1, len(b)))
-
-        self.c = c
-        if self.c.ndim == 1:
-            self.c = np.reshape(c, (1, len(c)))
-
-        # Number of simultaneous problems each to be solved in a
-        # cl workgroup
-        self.nlp = self.b.shape[0]
-        self.f = f
+        BaseSolver.init(self, A, b, c, f=f)
 
         self.init_cl()
 

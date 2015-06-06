@@ -14,17 +14,30 @@ non_cl_solvers = [(n,s) for n,s in solver_registry.items() if not n.startswith('
 cl_solvers = [(n,s) for n,s in solver_registry.items() if n.startswith('cl')]
 devices = [d for p in cl.get_platforms() for d in p.get_devices()]
 
+
 def small_problem():
     from scipy.sparse import csc_matrix
-    A = np.array([3,2,2,5,1,3], dtype=fdtype)   # Only for "<" constraint equations!
-    iA = np.array([0, 1, 0, 1, 0, 1], dtype=idtype)
-    kA = np.array([0, 2, 4, 6], dtype=idtype)
+    A = np.array([3,2,2,5,1,3], dtype=np.float)   # Only for "<" constraint equations!
+    iA = np.array([0, 1, 0, 1, 0, 1], )
+    kA = np.array([0, 2, 4, 6],)
     A = csc_matrix((A,iA,kA))
 
-    b = np.array([10, 15], dtype=fdtype)       # Right hand side vector.
-    c = np.array([2,3,4], dtype=fdtype)     # coefficients of variables in objective function.
+    b = np.array([10, 15], dtype=np.float)       # Right hand side vector.
+    c = np.array([2,3,4], dtype=np.float )     # coefficients of variables in objective function.
 
     print(A.todense())
+    return A, b, c
+
+
+def parallel_small_problem(N=10):
+    """
+    Take small_problem and perturb randomly to generate N problems
+    """
+    A, b, c = small_problem()
+
+    b = (0.5+np.random.rand( N,len(b) ))*b
+    c = (0.5+np.random.rand( N,len(c) ))*c
+
     return A, b, c
 
 
@@ -51,3 +64,27 @@ def pytest_solver(name, solver_cls, solver_args):
     np.testing.assert_equal(solver.status, 0)
     np.testing.assert_almost_equal(np.squeeze(solver.x), (0.0,0.0,5.0),
         decimal=5)
+
+
+@pytest.mark.parametrize("device,name,solver_cls",
+    [(d,n,s) for d,(n,s) in product(devices, cl_solvers)])
+def test_cl_solvers_parallel(device, name, solver_cls):
+
+    from pycllp.lp import StandardLP
+    A,b,c = parallel_small_problem()
+    N = b.shape[0]
+    lp = StandardLP(A,b,c)
+    ctx = cl.Context(devices=[device])
+    queue = cl.CommandQueue(ctx)
+
+    solver = solver_cls(ctx, queue)
+    lp.init(solver)
+    lp.solve(solver)
+
+    cysolver = solver_registry['hsd']()
+    lp.init(cysolver)
+    lp.solve(cysolver)
+
+    np.testing.assert_almost_equal(np.squeeze(solver.status), np.squeeze(cysolver.status),)
+    np.testing.assert_almost_equal(np.squeeze(solver.x), np.squeeze(cysolver.x),
+        decimal=4)

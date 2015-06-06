@@ -6,28 +6,26 @@ class CyHSDSolver(BaseSolver):
     name = 'cyhsd'
 
     def init(self, A, b, c, f=0.0):
-        self.A = A.tocsc()
-        if not self.A.has_sorted_indices:
-            self.A.sort_indices()
-
-        self.b = b
-        self.c = c
-        self.f = f
+        BaseSolver.init(self, A, b, c, f=f)
 
     def solve(self, ):
         from .._ipo import hsd_solver
 
-        m,n = self.A.shape
+        m,n,nlp = self.m,self.n,self.nlp
 
-        x = np.empty(n)
-        y = np.empty(m)
-        w = np.empty(m)
-        z = np.empty(n)
+        x = np.empty((nlp,n))
+        y = np.empty((nlp,m))
+        w = np.empty((nlp,m))
+        z = np.empty((nlp,n))
+        status = np.empty(nlp, dtype=np.int)
 
-        status = hsd_solver(m, n, self.A.nnz,
+        for i in range(nlp):
+            status[i] = hsd_solver(m, n, self.A.nnz,
                             self.A.indices, self.A.indptr, self.A.data,
-                            self.b, self.c,
-                            self.f, x, y, w, z)
+                            self.b[i,:], self.c[i,:],
+                            self.f, x[i,:], y[i,:], w[i,:], z[i,:])
+
+
         self.x = x
         self.status = status
         return status

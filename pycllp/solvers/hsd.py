@@ -22,26 +22,27 @@ class HSDSolver(BaseSolver):
     name = 'hsd'
 
     def init(self, A, b, c, f=0.0):
-        self.A = A.tocsc()
-        if not self.A.has_sorted_indices:
-            self.A.sort_indices()
-
-        self.m,self.n = A.shape
-        self.nz = self.A.nnz
-        self.b = b
-        self.c = c
-        self.f = f
-
+        BaseSolver.init(self, A, b, c, f=f)
 
     def solve(self, verbose=0):
+        n,nlp = self.n,self.nlp
+        self.x = np.empty((nlp,n))
+        self.status = np.empty(nlp, dtype=np.int)
+
+        for i in range(nlp):
+            self._solve(i, verbose=verbose)
+
+        return self.status
+
+    def _solve(self, ilp, verbose=0):
         n = self.n
         m = self.m
-        nz = self.nz
+        nz = self.A.nnz
         A = self.A.data
         iA = self.A.indices
         kA = self.A.indptr
-        b = self.b
-        c= self.c
+        b = self.b[ilp,:]
+        c= self.c[ilp,:]
         f=self.f
 
         phi, psi, dphi, dpsi = 0.0, 0.0, 0.0, 0.0
@@ -265,7 +266,5 @@ class HSDSolver(BaseSolver):
         del(  iAt )
         del(  kAt )
 
-        self.status = status
-        self.x = x
-
-        return status, x, y
+        self.status[ilp] = status
+        self.x[ilp,:] = x
