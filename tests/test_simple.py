@@ -8,6 +8,11 @@ import numpy as np
 import pytest
 import pyopencl as cl
 from pycllp.solvers import solver_registry
+from itertools import product
+
+non_cl_solvers = [(n,s) for n,s in solver_registry.items() if not n.startswith('cl')]
+cl_solvers = [(n,s) for n,s in solver_registry.items() if n.startswith('cl')]
+devices = [d for p in cl.get_platforms() for d in p.get_devices()]
 
 def small_problem(fdtype=np.float64, idtype=np.int32):
     from scipy.sparse import csc_matrix
@@ -23,19 +28,20 @@ def small_problem(fdtype=np.float64, idtype=np.int32):
     return A, b, c
 
 
-@pytest.mark.parametrize("name,solver_cls",
-    [(n,s) for n,s in solver_registry.items()])
-def test_solvers(name, solver_cls):
+@pytest.mark.parametrize("name,solver_cls",non_cl_solvers)
+def test_noncl_solvers(name, solver_cls):
+    pytest_solver(name, solver_cls, [])
+
+@pytest.mark.parametrize("device,name,solver_cls",
+    [(d,n,s) for d,(n,s) in product(devices, cl_solvers)])
+def test_cl_solvers(device, name, solver_cls):
+    ctx = cl.Context(devices=[device])
+    queue = cl.CommandQueue(ctx)
+    pytest_solver(name, solver_cls, [ctx, queue])
+
+def pytest_solver(name, solver_cls, solver_args):
     from pycllp.lp import StandardLP
     lp = StandardLP(*small_problem())
-
-    solver_args = []
-    if solver_cls.name == 'clhsd':
-        ctx = cl.create_some_context()
-        queue = cl.CommandQueue(ctx)
-
-        solver_args.extend([ctx, queue])
-
 
     solver = solver_cls(*solver_args)
     lp.init(solver)
@@ -48,7 +54,7 @@ def test_solvers(name, solver_cls):
 
 """
 
-@pytest.fixture(params=[d for p in cl.get_platforms() for d in p.get_devices()])
+@pytest.fixture(params=)
 def device(request):
     return request.param
 
