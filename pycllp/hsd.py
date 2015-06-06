@@ -11,9 +11,9 @@ Port to Python
 """
 from __future__ import print_function
 import numpy as np
-from linalg import smx, atnum
-from ldlt import LDLTFAC
-from lp import LP
+from .linalg import smx, atnum
+from .ldlt import LDLTFAC
+from .lp import LP
 
 EPS = 1.0e-12
 MAX_ITER = 200
