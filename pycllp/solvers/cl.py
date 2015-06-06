@@ -53,8 +53,8 @@ class ClHSDSolver(BaseSolver):
         kA = self.A.indptr.astype(np.int32)
         iA = self.A.indices.astype(np.int32)
         A = self.A.data.astype(np.float32)
-        b = self.b.reshape(np.prod(self.b.shape))
-        c= self.c.reshape(np.prod(self.c.shape))
+        b = self.b.reshape(np.prod(self.b.shape)).astype(np.float32)
+        c= self.c.reshape(np.prod(self.c.shape)).astype(np.float32)
         print (b, c, nlp)
         self.local_size = 1
         self.global_size = nlp*self.local_size
@@ -242,7 +242,7 @@ class ClHSDSolver(BaseSolver):
         cl.enqueue_copy(queue, self.x, x)
         cl.enqueue_copy(queue, self.y, y)
 
-
+        print(self.x, self.y, self.status)
         self.x = self.x.reshape((len(self.status),n))
         self.y = self.y.reshape((len(self.status),m))
 

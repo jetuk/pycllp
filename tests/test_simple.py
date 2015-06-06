@@ -49,4 +49,5 @@ def pytest_solver(name, solver_cls, solver_args):
 
 
     np.testing.assert_equal(solver.status, 0)
-    np.testing.assert_almost_equal(np.squeeze(solver.x), (0.0,0.0,5.0))
+    np.testing.assert_almost_equal(np.squeeze(solver.x), (0.0,0.0,5.0),
+        decimal=5)
