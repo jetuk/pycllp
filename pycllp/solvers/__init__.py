@@ -5,7 +5,8 @@ solver_registry = {}
 class MetaSolver(type):
     def __new__(cls, clsname, bases, attrs):
         newclass = super(MetaSolver, cls).__new__(cls, clsname, bases, attrs)
-        solver_registry[newclass.name] = newclass
+        if newclass.name is not None:
+            solver_registry[newclass.name] = newclass
         return newclass
 
 class BaseSolver(with_metaclass(MetaSolver)):
