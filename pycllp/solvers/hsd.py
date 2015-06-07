@@ -48,7 +48,7 @@ class HSDSolver(BaseSolver):
         phi, psi, dphi, dpsi = 0.0, 0.0, 0.0, 0.0
         normr, norms = 0.0, 0.0  # infeasibilites
         gamma, delta, mu, theta = 0.0, 0.0, 0.0, 0.0  # parameters
-        v = 5
+        v = verbose
         status = 5
         primal_obj, dual_obj = 0.0, 0.0
 
@@ -90,14 +90,14 @@ class HSDSolver(BaseSolver):
         atnum(m, n, kA, iA, A, kAt, iAt, At)
 
         # 	Display Banner.
-
-        print("m = {:d},n = {:d},nz = {:d}".format(m, n, nz))
-        print(
-    """--------------------------------------------------------------------------
-             |           Primal          |            Dual           |       |
-      Iter   |  Obj Value       Infeas   |  Obj Value       Infeas   |  mu   |
-    - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    """)
+        if verbose > 0:
+            print("m = {:d},n = {:d},nz = {:d}".format(m, n, nz))
+            print(
+        """--------------------------------------------------------------------------
+                 |           Primal          |            Dual           |       |
+          Iter   |  Obj Value       Infeas   |  Obj Value       Infeas   |  mu   |
+        - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        """)
 
         # 	Iteration.
         ldltfac = LDLTFAC(n, m, kAt, iAt, At, kA, iA, A, v)
@@ -155,8 +155,8 @@ class HSDSolver(BaseSolver):
             gamma = -(1-delta)*(dual_obj - primal_obj + psi) + psi - delta*mu/phi
 
             # Print statistics.
-
-            print("{:8d}   {:14.7e}  {:8.1e}    {:14.7e}  {:8.1e}  {:8.1e}".format(
+            if verbose > 0:
+                print("{:8d}   {:14.7e}  {:8.1e}    {:14.7e}  {:8.1e}  {:8.1e}".format(
                   _iter, primal_obj/phi+f, normr, dual_obj/phi+f, norms, mu))
 
             # STEP 4: Compute step directions.
