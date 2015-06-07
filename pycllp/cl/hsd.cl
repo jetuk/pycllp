@@ -86,7 +86,7 @@ __kernel void hsd(
   	  y[m0+i] = 1.0;
     }
 
-    _status = -1;
+    _status = 5;
     for (iter=0; iter<MAX_ITER; iter++) {
 
 
@@ -94,7 +94,7 @@ __kernel void hsd(
       /*************************************************************
       * STEP 1: Compute mu and centering parameter delta.
       *************************************************************/
-      // user normr and norms as temporary variables for dotprod
+
       dotprod(z,x,n,&temp1);
       dotprod(w,y,m,&temp2);
       mu = (temp1+temp2+phi*psi) / (n+m+1);
@@ -115,6 +115,11 @@ __kernel void hsd(
       /*************************************************************
       * STEP 2: Check stopping rule.
       *************************************************************/
+      if ( isnan(mu) ) {
+        _status = -2;
+        break; // Bad things have happened
+      }
+
 
       if ( mu < EPS ) {
         if ( phi > psi ) {
