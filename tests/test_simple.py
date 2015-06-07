@@ -29,7 +29,7 @@ def small_problem():
     return A, b, c
 
 
-def parallel_small_problem(N=10):
+def parallel_small_problem(N=1024):
     """
     Take small_problem and perturb randomly to generate N problems
     """
@@ -90,4 +90,4 @@ def test_cl_solvers_parallel(device, name, solver_cls):
     np.testing.assert_almost_equal(solver.status, pysolver.status,)
     np.testing.assert_almost_equal(
                 np.sum(solver.x*c,axis=1),
-                np.sum(pysolver.x*c,axis=1), decimal=4)
+                np.sum(pysolver.x*c,axis=1), decimal=3)
