@@ -53,7 +53,7 @@ class ClHSDSolver(BaseSolver):
         # arrays for A^T
         At = np.zeros(nz,dtype=np.float32)
         iAt = np.zeros(nz, dtype=np.int32)
-        kAt = np.zeros(n+1, dtype=np.int32)
+        kAt = np.zeros(m+1, dtype=np.int32)
 
         # Verify input.
 
@@ -163,11 +163,12 @@ class ClHSDSolver(BaseSolver):
         self.g_kQ = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
                                 hostbuf=self.kQ)
 
-
+        print(self.AAt, self.iAAt, self.kAAt)
         print('Creating OpenCL program...')
         path = os.path.dirname(__file__)
         path = os.path.join(path, '..','cl')
-        build_opts = '-I '+path
+        build_opts = ['-I '+path, '-cl-single-precision-constant',
+            '-cl-opt-disable', ]
 
         src_files = ['hsd.cl', 'linalg.cl', 'ldlt.cl']
         src = ''
@@ -203,9 +204,9 @@ class ClHSDSolver(BaseSolver):
         AAt = self.l_AAt
         iAAt = self.g_iAAt
         kAAt = self.g_kAAt
-        Q = self.g_Q
-        iQ = self.g_iQ
-        kQ = self.g_kQ
+        #Q = self.g_Q
+        #iQ = self.g_iQ
+        #kQ = self.g_kQ
 
         diag = self.l_diag
         perm = self.g_perm
@@ -214,13 +215,13 @@ class ClHSDSolver(BaseSolver):
         fwork = self.l_fwork
         iwork = self.l_iwork
         status = self.g_status
-
+        print('Executing kernel...')
         self.cl_prg.hsd(
             queue,
             gs,
             ls,
             m,n,denwin,c,b,x,z,y,w,diag,perm,iperm,
-            A,iA,kA,At,iAt,kAt,AAt,iAAt,kAAt,Q,iQ,kQ,
+            A,iA,kA,At,iAt,kAt,AAt,iAAt,kAAt,#Q,iQ,kQ,
             fwork,iwork,status
         )
         cl.enqueue_copy(queue, self.status, status)

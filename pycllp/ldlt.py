@@ -471,8 +471,8 @@ class LDLTFAC(object):
         #/*------------------------------------------------------+
         #| initialize constants                                 */
 
-        temp = np.empty(m2)
-        first = np.empty(m2, dtype=np.int)
+        temp = np.zeros(m2)
+        first = np.zeros(m2, dtype=np.int)
         link = np.empty(m2, dtype=np.int)
         for i in range(m2):
             link[i] = -1

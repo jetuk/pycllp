@@ -8,8 +8,8 @@
 #define _EPS 1.0e-6
 #define _EPSSOL 1.0e-6  /* Zero tolerance for consistent eqns w/dep rows */
 #define _EPSNUM 0.0     /* Initial zero tolerance for dependent rows */
-#define _EPSCDN 1.0e-6 /* Zero tolerance for ill-conditioning test */
-#define _EPSDIAG 1.0e-6 /* diagonal perturbation */
+#define _EPSCDN 1.0e-12 /* Zero tolerance for ill-conditioning test */
+#define _EPSDIAG 1.0e-14 /* diagonal perturbation */
 #define _STABLTY 1.0    /* 0=fast/unstable, 1=slow/stable */
 #define _NOREORD 0
 #define _MD  1
@@ -20,7 +20,7 @@
 #define _DUAL 2
 
 void lltnum(
-  int m, int n, float _max,  int denwin, int ndep,
+  int m, int n, float _max,  int denwin, int* ndep,
   __local float* diag,
   __global float* perm,
   __global int* iperm,
@@ -33,9 +33,9 @@ void lltnum(
   __local float* AAt,
   __global int* iAAt,
   __global int* kAAt,
-  __global float* Q,
-  __global int* iQ,
-  __global int* kQ,
+  //__global float* Q,
+  //__global int* iQ,
+  //__global int* kQ,
   __local float* dn,
   __local float* dm,
   __local float* temp,
@@ -74,13 +74,17 @@ void lltnum(
         /*------------------------------------------------------+
         | initialize constants                                 */
 
-        for (i=0; i<m2; i++) link[i] = -1;
+        for (i=0; i<m2; i++) {
+          temp[i] = 0.0;
+          first[i] = 0;
+          link[i] = -1;
+        }
 
         for (i=0; i<m2; i++) {
                 if (fabs(diag[i]) > maxdiag) maxdiag = fabs(diag[i]);
         }
 
-        ndep=0;
+        (*ndep)=0;
 
         /*------------------------------------------------------+
         | begin main loop - this code is taken from George and  |
@@ -126,7 +130,7 @@ void lltnum(
 	    /*
             if (sgn_diagi*diagi <= epsnum*maxdiag || mark[i] == FALSE)
 	    */
-                ndep++;
+                (*ndep)++;
 		maxoffdiag = 0.0;
                 for (kk=k_bgn; kk<k_end; kk++) {
 		    maxoffdiag = fmax( maxoffdiag, fabs( AAt[kk] ) );
@@ -157,8 +161,8 @@ void lltnum(
 
 }
 
-__kernel void inv_num(
-  int m, int n, float _max, int denwin, int ndep,
+void inv_num(
+  int m, int n, float _max, int denwin, int* ndep,
   __local float* diag,
   __global float* perm,
   __global int* iperm,
@@ -171,9 +175,9 @@ __kernel void inv_num(
   __local float* AAt,
   __global int* iAAt,
   __global int* kAAt,
-  __global float* Q,
-  __global int* iQ,
-  __global int* kQ,
+  //__global float* Q,
+  //__global int* iQ,
+  //__global int* kQ,
   __local float* dn,
   __local float* dm,
   __local float* fwork,
@@ -212,11 +216,13 @@ __kernel void inv_num(
                     AAt[iwork[row]] = A[k];
                   }
           }
+          /*
           for (k=kQ[j]; k<kQ[j+1]; k++) {
-                  row = iperm[iQ[k]];     /* row is a new_index */
+                  row = iperm[iQ[k]];     /* row is a new_index
                   if (row > col) AAt[iwork[row]] = -_max*Q[k];
                   else if (row == col) diag[row] -= _max*Q[k];
           }
+          */
   }
 
   for (i=0; i<m; i++) {
@@ -246,7 +252,7 @@ __kernel void inv_num(
   for (i=0; i<m+n; i++) mark[i] = TRUE;
 
   lltnum(m, n, _max, denwin, ndep, diag, perm, iperm,
-    A, iA, kA, At, iAt, kAt, AAt, iAAt, kAAt, Q, iQ, kQ,
+    A, iA, kA, At, iAt, kAt, AAt, iAAt, kAAt, //Q, iQ, kQ,
     dn, dm, fwork, iwork, mark
     );
 
@@ -259,7 +265,7 @@ __kernel void inv_num(
 | factorization.                               */
 
 void rawsolve(
-	int m, int n, int ndep,
+	int m, int n, int* ndep,
   __local float* diag,
   __local float* AAt,
   __global int* iAAt,
@@ -277,7 +283,7 @@ void rawsolve(
   consistent = TRUE;
   m2 = m+n;
 
-  if (ndep) {
+  if ((*ndep)) {
     maxv_l(z,m,&eps);
     eps *= epssol;
   }
@@ -349,7 +355,7 @@ void rawsolve(
 | factorization.                               */
 
 void forwardbackward(
-  int m, int n, int _max, int ndep,
+  int m, int n, int _max, int* ndep,
   __local float* diag,
   __global int* iperm,
   __global float* At,
@@ -361,9 +367,9 @@ void forwardbackward(
   __local float* AAt,
   __global int* iAAt,
   __global int* kAAt,
-  __global float* Q,
-  __global int* iQ,
-  __global int* kQ,
+  //__global float* Q,
+  //__global int* iQ,
+  //__global int* kQ,
   __local int* mark,
   __local float* Dn,   /* diagonal matrix for upper-left  corner */
   __local float* Dm,    /* diagonal matrix for lower-right corner */
@@ -377,21 +383,21 @@ void forwardbackward(
 	int m2 = m+n;
 	float maxrs, oldmaxrs, maxbc;
   float temp1, temp2;
-  __local float *x_k, *y_k, *r, *s, *z, *Qx;
+  __local float *x_k, *y_k, *r, *s, *z;//, *Qx;
   consistent = TRUE;
 
   y_k = fwork; // length m
-  x_k = fwork+m; // length n
+  x_k = y_k+m; // length n
   r = x_k+n; // length m
   s = r+m; // length n
   z = s+n; // length n+m
-  Qx = z+m2; // length n
+  //Qx = z+m2; // length n
 
 
   maxv_l(b,m,&temp1);
-  maxv_l(b,m,&temp2);
+  maxv_l(c,n,&temp2);
 
-	maxbc = fmax( temp1, temp2 ) + 1;
+	maxbc = fmax( temp1, temp2 ) + 1.0f;
 
 	maxrs = HUGE_VALF;
 	do {
@@ -423,10 +429,11 @@ void forwardbackward(
 
 	    smx_ll(m,n,A, kA, iA, x_k,r);
 	    smx_ll(n,m,At,kAt,iAt,y_k,s);
-	    smx_ll(n,n,Q ,kQ ,iQ ,x_k,Qx);
+	    //smx_ll(n,n,Q ,kQ ,iQ ,x_k,Qx);
 
 	    for (j=0; j<n; j++) {
-		    s[j] = c[j] - (s[j] - Dn[j]*x_k[j] - _max*Qx[j]);
+		    //s[j] = c[j] - (s[j] - Dn[j]*x_k[j] - _max*Qx[j]);
+        s[j] = c[j] - (s[j] - Dn[j]*x_k[j] );
 	    }
 
 	    for (i=0; i<m; i++) {
@@ -438,20 +445,20 @@ void forwardbackward(
       maxv_l(s,n,&temp2);
 	    maxrs = fmax( temp1,temp2 );
 
-	    /* --- for tuning purposes ---
+	    /* --- for tuning purposes --- */
       #if __OPENCL_C_VERSION__ >= CL_VERSION_1_2
-	    if (TRUE) {
+      if (pass>0) {
         maxv_l(s,n,&temp1);
         maxv_l(r,m,&temp2);
 		    printf("refinement(%3d): %8.2e %8.2e %8.2e \n",
 		   pass, temp1, temp2, maxrs/maxbc );
 	    }
       #endif
-      */
+
 
 
 	    pass++;
-	} while( maxrs > 1.0e-6*maxbc && maxrs < oldmaxrs/2 );
+	} while( maxrs > 1.0e-10*maxbc && maxrs < oldmaxrs/2 );
 
 	if ( maxrs > oldmaxrs && pass > 1 ) {
             for (j=0; j<n; j++) x_k[j] = x_k[j] - z[iperm[j]];

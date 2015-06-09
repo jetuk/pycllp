@@ -25,6 +25,10 @@ def small_problem():
     b = np.array([10, 15], dtype=np.float)       # Right hand side vector.
     c = np.array([2,3,4], dtype=np.float )     # coefficients of variables in objective function.
 
+    c = np.array([ 1.10685436,  3.67678309,  2.04570983])
+    b = np.array([  5.187898,    16.76453246])
+
+
     print(A.todense())
     return A, b, c
 
@@ -34,7 +38,7 @@ def parallel_small_problem(N=1024):
     Take small_problem and perturb randomly to generate N problems
     """
     A, b, c = small_problem()
-
+    np.random.seed(0)
     b = (0.5+np.random.rand( N,len(b) ))*b
     c = (0.5+np.random.rand( N,len(c) ))*c
     print('A',A)
@@ -64,14 +68,14 @@ def pytest_solver(name, solver_cls, solver_args):
 
 
     np.testing.assert_equal(solver.status, 0)
-    np.testing.assert_almost_equal(np.squeeze(solver.x), (0.0,0.0,5.0),
+    np.testing.assert_almost_equal(np.squeeze(solver.x), (  1.00997e-13,   1.22527e-12,   5.18790e+00),
         decimal=5)
 
 
 @pytest.mark.parametrize("device,name,solver_cls",
     [(d,n,s) for d,(n,s) in product(devices, cl_solvers)])
 def test_cl_solvers_parallel(device, name, solver_cls):
-
+    print("Device", device)
     from pycllp.lp import StandardLP
     A,b,c = parallel_small_problem()
     N = b.shape[0]
@@ -90,4 +94,4 @@ def test_cl_solvers_parallel(device, name, solver_cls):
     np.testing.assert_almost_equal(solver.status, pysolver.status,)
     np.testing.assert_almost_equal(
                 np.sum(solver.x*c,axis=1),
-                np.sum(pysolver.x*c,axis=1), decimal=3)
+                np.sum(pysolver.x*c,axis=1).astype(np.float32), decimal=4)

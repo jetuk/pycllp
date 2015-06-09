@@ -97,11 +97,12 @@ void smx_gl(
   int i,j,k;
   int lid = get_local_id(0);
   int gid = get_global_id(0);
+  int wgid = get_group_id(0);
 
   for (i=0; i<m; i++) y[i] = 0.0e0;
   for (j=0; j<n; j++)
           for (k=ka[j]; k<ka[j+1]; k++)
-                  y[ia[k]] += a[k]*x[gid*n+j];
+                  y[ia[k]] += a[k]*x[wgid*n+j];
 
 }
 
@@ -131,6 +132,6 @@ void maxv_l( __local float *x, int n, float *maxv)
 {
         int i;
         (*maxv)=0.0e0;
-        for (i=0; i<n; i++) (*maxv) = max((*maxv), fabs(x[i]));
+        for (i=0; i<n; i++) (*maxv) = fmax((*maxv), fabs(x[i]));
 
 }

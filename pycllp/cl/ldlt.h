@@ -1,5 +1,5 @@
-__kernel void inv_num(
-  int m, int n, float _max, int denwin, int ndep,
+void inv_num(
+  int m, int n, float _max, int denwin, int* ndep,
   __local float* diag,
   __global float* perm,
   __global int* iperm,
@@ -12,9 +12,9 @@ __kernel void inv_num(
   __local float* AAt,
   __global int* iAAt,
   __global int* kAAt,
-  __global float* Q,
-  __global int* iQ,
-  __global int* kQ,
+  //__global float* Q,
+  //__global int* iQ,
+  //__global int* kQ,
   __local float* dn,
   __local float* dm,
   __local float* fwork,
@@ -22,7 +22,7 @@ __kernel void inv_num(
   __local int* mark
 );
 void lltnum(
-  int m, int n, float _max,  int denwin, int ndep,
+  int m, int n, float _max,  int denwin, int* ndep,
   __local float* diag,
   __global float* perm,
   __global int* iperm,
@@ -35,9 +35,9 @@ void lltnum(
   __local float* AAt,
   __global int* iAAt,
   __global int* kAAt,
-  __global float* Q,
-  __global int* iQ,
-  __global int* kQ,
+  //__global float* Q,
+  //__global int* iQ,
+  //__global int* kQ,
   __local float* dn,
   __local float* dm,
   __local float* temp,
@@ -45,7 +45,7 @@ void lltnum(
   __local int* mark
 );
 void forwardbackward(
-  int m, int n, int _max, int ndep,
+  int m, int n, int _max, int* ndep,
   __local float* diag,
   __global int* iperm,
   __global float* A,
@@ -57,9 +57,9 @@ void forwardbackward(
   __local float* AAt,
   __global int* iAAt,
   __global int* kAAt,
-  __global float* Q,
-  __global int* iQ,
-  __global int* kQ,
+  //__global float* Q,
+  //__global int* iQ,
+  //__global int* kQ,
   __local int* mark,
   __local float* Dn,   /* diagonal matrix for upper-left  corner */
   __local float* Dm,    /* diagonal matrix for lower-right corner */

@@ -2,7 +2,7 @@
 #include <linalg.h>
 #include <ldlt.h>
 
-#define EPS 1.0e-7
+#define EPS 1.0e-6
 #define MAX_ITER 200
 
 __kernel void hsd(
@@ -25,9 +25,9 @@ __kernel void hsd(
   __local float* AAt,
   __global int* iAAt,
   __global int* kAAt,
-  __global float* Q,
-  __global int* iQ,
-  __global int* kQ,
+  //__global float* Q,
+  //__global int* iQ,
+  //__global int* kQ,
   __local float* fwork,  // length 9n+10m
   __local int* iwork, // length 3n+3m
   __global int* status
@@ -49,7 +49,7 @@ __kernel void hsd(
     int _max = 0;
     int ndep = 0;
     int consistent;
-    float f = 0.001;
+    float f = 0.0;
 
     /****************************************************************
     *  Local memory pointers         				    *
@@ -189,24 +189,26 @@ __kernel void hsd(
       for (j=0; j<n; j++) { D[j] = z[n0+j]/x[n0+j]; }
       for (i=0; i<m; i++) { E[i] = w[m0+i]/y[m0+i]; }
 
-      inv_num(n, m, _max, denwin, ndep,
+      inv_num(n, m, _max, denwin, &ndep,
         diag, perm, iperm, A, iA, kA, At, iAt, kAt,
-        AAt, iAAt, kAAt, Q, iQ, kQ,
+        AAt, iAAt, kAAt, //Q, iQ, kQ,
         E, D, _fwork, _iwork, mark);
 
       for (j=0; j<n; j++) { fx[j] = -sigma[j]; }
       for (i=0; i<m; i++) { fy[i] =  rho[i]; }
 
-      forwardbackward(n, m, _max, ndep, diag, iperm, A, iA, kA, At, iAt, kAt,
-      AAt, iAAt, kAAt, Q, iQ, kQ, mark,
+      forwardbackward(n, m, _max, &ndep, diag, iperm, A, iA, kA, At, iAt, kAt,
+      AAt, iAAt, kAAt, //Q, iQ, kQ,
+      mark,
       E, D, fy, fx, _fwork, consistent
       );
 
       for (j=0; j<n; j++) { gx[j] = -c[n0+j]; }
       for (i=0; i<m; i++) { gy[i] = -b[m0+i]; }
 
-      forwardbackward(n, m, _max, ndep, diag, iperm, A, iA, kA, At, iAt, kAt,
-      AAt, iAAt, kAAt, Q, iQ, kQ, mark,
+      forwardbackward(n, m, _max, &ndep, diag, iperm, A, iA, kA, At, iAt, kAt,
+      AAt, iAAt, kAAt, //Q, iQ, kQ,
+      mark,
       E, D, gy, gx, _fwork, consistent
       );
 
@@ -245,8 +247,8 @@ __kernel void hsd(
 
       if (theta < -dphi/phi) { theta = -dphi/phi; }
       if (theta < -dpsi/psi) { theta = -dpsi/psi; }
-      theta = min( 0.95/theta, 1.0 );
-
+      theta = fmin( 0.95/theta, 1.0 );
+      printf("%8.5g %8.5g %8.5g \n", dphi, dpsi, theta);
       for (j=0; j<n; j++) {
     	    x[n0+j] = x[n0+j] + theta*dx[j];
     	    z[n0+j] = z[n0+j] + theta*dz[j];
