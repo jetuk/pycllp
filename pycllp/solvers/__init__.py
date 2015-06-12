@@ -40,3 +40,4 @@ class BaseSolver(with_metaclass(MetaSolver)):
 from .cython import CyHSDSolver
 from .hsd import HSDSolver
 from .cl import ClHSDSolver
+from .pathfollowing import DensePathFollowingSolver
