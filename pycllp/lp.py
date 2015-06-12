@@ -38,12 +38,12 @@ class StandardLP(BaseLP):
 
         maximize:
         .. math:
-	        c^Tx
+            c^Tx
 
         subject to:
         .. math:
-	        Ax <= b
-	        x >= 0
+            Ax <= b
+            x >= 0
 
         :param A: scipy.sparse matrix (will be converted to CSC,
             internally). Defines constraint coefficients.
@@ -67,12 +67,12 @@ class GeneralLP(BaseLP):
 
         optimize:
         .. math:
-	        c^Tx + f
+            c^Tx + f
 
         subject to:
         .. math:
-	        b <= Ax <= b+r
-	        l <=  x <= u
+            b <= Ax <= b+r
+            l <=  x <= u
 
         :param A: scipy.sparse matrix (will be converted to CSC,
             internally). Defines constraint coefficients.
@@ -120,7 +120,7 @@ class GeneralLP(BaseLP):
         f += np.dot(c,l)
 
         # Convert equality constraints to a pair of inequalities
-        A = vstack([A,A]) # Double A matrix
+        A = vstack([-A, A]) # Double A matrix
 
         b = np.r_[b,b]
         b[:self.m] *= -1
@@ -128,18 +128,19 @@ class GeneralLP(BaseLP):
 
         # add upper bounds
         nubs = len(ind)
-        Aubs = coo_matrix((np.ones(nubs), (np.arange(nubs,ind))))
-        b = np.r_[b,u[ind]]
-        A = vstack([A,Aubs])
+        if nubs > 0:
+            Aubs = coo_matrix((np.ones(nubs), (ind, ind)))
+            b = np.r_[b,u[ind]]
+            A = vstack([A,Aubs])
 
         #  Now lp has the following form,
-	    #
-	    #  maximize c^Tx + c^Tl
         #
-	    # s.t. -Ax <= -b
-	    #       Ax <=  b+r-l
-	    #        x <=  u-l
-	    #        x >=  0
+        #  maximize c^Tx + c^Tl
+        #
+        # s.t. -Ax <= -b
+        #       Ax <=  b+r-l
+        #        x <=  u-l
+        #        x >=  0
 
         assert A.shape[0] == b.shape[0]
 

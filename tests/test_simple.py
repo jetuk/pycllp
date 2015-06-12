@@ -7,12 +7,8 @@ from __future__ import print_function
 import numpy as np
 import pytest
 import pyopencl as cl
-from pycllp.solvers import solver_registry
+from helpers import non_cl_solvers, cl_solvers, devices
 from itertools import product
-
-non_cl_solvers = [(n,s) for n,s in solver_registry.items() if not n.startswith('cl')]
-cl_solvers = [(n,s) for n,s in solver_registry.items() if n.startswith('cl')]
-devices = [d for p in cl.get_platforms() for d in p.get_devices()]
 
 
 def small_problem():
@@ -77,6 +73,8 @@ def pytest_solver(name, solver_cls, solver_args):
 def test_cl_solvers_parallel(device, name, solver_cls):
     print("Device", device)
     from pycllp.lp import StandardLP
+    from pycllp.solvers import solver_registry
+
     A,b,c = parallel_small_problem()
     N = b.shape[0]
     lp = StandardLP(A,b,c)
@@ -87,7 +85,7 @@ def test_cl_solvers_parallel(device, name, solver_cls):
     lp.init(solver)
     lp.solve(solver)
 
-    pysolver = solver_registry['hsd']()
+    pysolver = solver_registry['dense_path_following']()
     lp.init(pysolver)
     lp.solve(pysolver)
 

@@ -1063,7 +1063,7 @@ class LDLTFAC(object):
 
                                 spc[nbr] *= 2
                                 #nbrs[nbr] = np.zeros(spc[nbr], dtype=np.int)
-                                nbrs[nbr].resize(spc[nbr])
+                                nbrs[nbr].resize(spc[nbr], refcheck=False)
 
                             nbrs[nbr][ne] = nbr2
                             degree[nbr]+=1
@@ -1077,7 +1077,7 @@ class LDLTFAC(object):
 
                                 spc[nbr2] *= 2
                                 #nbrs[nbr2] = np.zeros(spc[nbr2], dtype=np.int)
-                                nbrs[nbr2].resize(spc[nbr2])
+                                nbrs[nbr2].resize(spc[nbr2], refcheck=False)
 
                             nbrs[nbr2][ne] = nbr
                             degree[nbr2]+=1

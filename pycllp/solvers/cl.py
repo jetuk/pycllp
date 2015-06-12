@@ -178,7 +178,7 @@ class ClHSDSolver(BaseSolver):
         self.cl_prg = cl.Program(ctx, src).build(options=build_opts)
 
 
-    def solve(self,):
+    def solve(self,verbose=0):
         ctx = self.ctx
         queue = self.queue
 

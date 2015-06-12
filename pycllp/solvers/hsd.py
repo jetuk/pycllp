@@ -74,7 +74,7 @@ class HSDSolver(BaseSolver):
         # arrays for A^T
         At = np.zeros(nz)
         iAt = np.zeros(nz, dtype=np.int)
-        kAt = np.zeros(n+1, dtype=np.int)
+        kAt = np.zeros(m+1, dtype=np.int)
 
 
         #  Initialization.
@@ -142,7 +142,7 @@ class HSDSolver(BaseSolver):
             for i in range(m):
                 rho[i] = -(1-delta)*rho[i] + w[i] - delta*mu/y[i]
 
-            smx(m, n, At, kAt, iAt, y, sigma)
+            smx(n, m, At, kAt, iAt, y, sigma)
 
             for j in range(n):
                 sigma[j] = -sigma[j] + c[j]*phi + z[j]
