@@ -46,7 +46,7 @@ def parallel_small_problem(N=1024):
     print('c',c)
     return A, b, c
 
-
+@pytest.mark.noncl
 @pytest.mark.parametrize("name,solver_cls",non_cl_solvers)
 def test_noncl_solvers(name, solver_cls):
     pytest_solver(name, solver_cls, [])
@@ -64,7 +64,7 @@ def pytest_solver(name, solver_cls, solver_args):
 
     solver = solver_cls(*solver_args)
     lp.init(solver)
-    status = lp.solve(solver)
+    status = lp.solve(solver, verbose=2)
 
 
     np.testing.assert_equal(solver.status, 0)
