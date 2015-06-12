@@ -8,7 +8,7 @@ class CyHSDSolver(BaseSolver):
     def init(self, A, b, c, f=0.0):
         BaseSolver.init(self, A, b, c, f=f)
 
-    def solve(self, ):
+    def solve(self, verbose=0):
         from .._ipo import hsd_solver
 
         m,n,nlp = self.m,self.n,self.nlp

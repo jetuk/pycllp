@@ -56,8 +56,8 @@ class StandardLP(BaseLP):
         solver.init(self.A, self.b, self.c, self.f)
 
 
-    def solve(self, solver):
-        return solver.solve()
+    def solve(self, solver, verbose=0):
+        return solver.solve(verbose=verbose)
 
 class GeneralLP(BaseLP):
 
