@@ -1,0 +1,12 @@
+appdirs==1.4.0
+Cython==0.22
+decorator==3.4.2
+numpy==1.9.2
+py==1.4.28
+-e git+https://github.com/jetuk/pycllp.git@81c22e8316d9be3b58f97dacd5b1caba5ef93429#egg=pycllp-master
+pyopencl==2015.1
+pytest==2.7.1
+pytools==2014.3.5
+scipy==0.15.1
+six==1.9.0
+wheel==0.24.0
