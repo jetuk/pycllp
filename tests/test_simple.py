@@ -85,7 +85,7 @@ def test_cl_solvers_parallel(device, name, solver_cls):
     lp.init(solver)
     lp.solve(solver)
 
-    pysolver = solver_registry['dense_path_following']()
+    pysolver = solver_registry['cyhsd']()
     lp.init(pysolver)
     lp.solve(pysolver)
 
