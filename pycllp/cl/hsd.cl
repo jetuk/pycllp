@@ -30,7 +30,8 @@ __kernel void hsd(
   //__global int* kQ,
   __local float* fwork,  // length 9n+10m
   __local int* iwork, // length 3n+3m
-  __global int* status
+  __global int* status,
+  int verbose
   ) {
     int i, j;
     int lid = get_local_id(0);
@@ -177,9 +178,11 @@ __kernel void hsd(
       * Print statistics.
       *************************************************************/
       #if __OPENCL_C_VERSION__ >= CL_VERSION_1_2
-      printf("%8d %8d %8d %8d   %14.7e  %8.1e    %14.7e  %8.1e  %8.1e \n",
-        wgid, gid, lid, iter, (primal_obj/phi+f), normr,
-              (dual_obj/phi+f),   norms, mu );
+      if (verbose > 0) {
+        printf("%8d %8d %8d %8d   %14.7e  %8.1e    %14.7e  %8.1e  %8.1e \n",
+          wgid, gid, lid, iter, (primal_obj/phi+f), normr,
+                (dual_obj/phi+f),   norms, mu );
+      }
       #endif
 
       /*************************************************************
@@ -200,7 +203,7 @@ __kernel void hsd(
       forwardbackward(n, m, _max, &ndep, diag, iperm, A, iA, kA, At, iAt, kAt,
       AAt, iAAt, kAAt, //Q, iQ, kQ,
       mark,
-      E, D, fy, fx, _fwork, consistent
+      E, D, fy, fx, _fwork, consistent, verbose
       );
 
       for (j=0; j<n; j++) { gx[j] = -c[n0+j]; }
@@ -209,7 +212,7 @@ __kernel void hsd(
       forwardbackward(n, m, _max, &ndep, diag, iperm, A, iA, kA, At, iAt, kAt,
       AAt, iAAt, kAAt, //Q, iQ, kQ,
       mark,
-      E, D, gy, gx, _fwork, consistent
+      E, D, gy, gx, _fwork, consistent, verbose
       );
 
       dotprod_gl(c,fx,n,&temp1);

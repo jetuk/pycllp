@@ -376,7 +376,8 @@ void forwardbackward(
   __local float* c,
   __local float* b,
   __local float* fwork, // At least 3m+4n in length
-  int consistent
+  int consistent,
+  int verbose
 )
 {
   int i, j, pass=0;
@@ -447,7 +448,7 @@ void forwardbackward(
 
 	    /* --- for tuning purposes --- */
       #if __OPENCL_C_VERSION__ >= CL_VERSION_1_2
-      if (pass>0) {
+      if (verbose>0 && pass>0) {
         maxv_l(s,n,&temp1);
         maxv_l(r,m,&temp2);
 		    printf("refinement(%3d): %8.2e %8.2e %8.2e \n",

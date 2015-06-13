@@ -184,6 +184,7 @@ class ClHSDSolver(BaseSolver):
 
         ls = (self.local_size,)
         gs = (self.global_size,)
+        v = np.int32(verbose)
 
         m = np.int32(self.A.shape[0])
         n = np.int32(self.A.shape[1])
@@ -222,7 +223,7 @@ class ClHSDSolver(BaseSolver):
             ls,
             m,n,denwin,c,b,x,z,y,w,diag,perm,iperm,
             A,iA,kA,At,iAt,kAt,AAt,iAAt,kAAt,#Q,iQ,kQ,
-            fwork,iwork,status
+            fwork,iwork,status,v
         )
         cl.enqueue_copy(queue, self.status, status)
         cl.enqueue_copy(queue, self.x, x)

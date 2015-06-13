@@ -66,5 +66,6 @@ void forwardbackward(
   __local float* c,
   __local float* b,
   __local float* fwork, // At least 3m+4n in length
-  int consistent
+  int consistent,
+  int verbose
 );
