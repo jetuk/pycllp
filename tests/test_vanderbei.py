@@ -16,6 +16,7 @@ def test_noncl_solvers(name, solver_cls, problem_name, problem_func):
 
 
 def pytest_solver(name, solver_cls, solver_args, problem_func):
+    print("Testing Vanderbei {} with solver {}...".format(problem_func, name))
     from pycllp.lp import GeneralLP
 
     args = list(problem_func())
