@@ -509,6 +509,13 @@ void inv_clo(void)
         FREE( mark );  FREE( AAt );   FREE( diag );
 	FREE( y_k );  FREE( x_k );
 	FREE( r );     FREE( s );     FREE( z );    FREE( Qx );
+  // Free LP
+  FREE( lp->Q );
+  FREE( lp->iQ );
+  FREE( lp->kQ );
+  FREE( lp->bndmark );
+  FREE( lp->rngmark );
+  FREE( lp );
 }
 
 /* Define static functions */
