@@ -251,7 +251,7 @@ __kernel void hsd(
       if (theta < -dphi/phi) { theta = -dphi/phi; }
       if (theta < -dpsi/psi) { theta = -dpsi/psi; }
       theta = fmin( 0.95/theta, 1.0 );
-      printf("%8.5g %8.5g %8.5g \n", dphi, dpsi, theta);
+
       for (j=0; j<n; j++) {
     	    x[n0+j] = x[n0+j] + theta*dx[j];
     	    z[n0+j] = z[n0+j] + theta*dz[j];

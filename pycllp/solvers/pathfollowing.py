@@ -41,7 +41,7 @@ class DensePathFollowingSolver(BaseSolver):
         A = self.A.todense()
         b = self.b[ilp, :]
         c = self.c[ilp, :]
-        f = self.f
+        f = self.f[ilp]
 
         normr, norms = 0.0, 0.0  # infeasibilites
         gamma, delta, mu, theta = 0.0, 0.0, 0.0, 0.0  # parameters

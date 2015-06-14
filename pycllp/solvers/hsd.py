@@ -43,7 +43,7 @@ class HSDSolver(BaseSolver):
         kA = self.A.indptr
         b = self.b[ilp,:]
         c= self.c[ilp,:]
-        f=self.f
+        f=self.f[ilp]
 
         phi, psi, dphi, dpsi = 0.0, 0.0, 0.0, 0.0
         normr, norms = 0.0, 0.0  # infeasibilites
