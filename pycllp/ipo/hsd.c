@@ -26,7 +26,7 @@
 
 int solver(int m,int n,int nz,int *iA, int *kA,
 		double *A, double *b, double *c, double f,
-		double *x, double *y, double *w, double *z)
+		double *x, double *y, double *w, double *z, int verbose)
 {
     double  *dx, *dw, *dy, *dz;                          /* step directions */
     double  *fx, *fy, *gx, *gy;
@@ -38,7 +38,7 @@ int solver(int m,int n,int nz,int *iA, int *kA,
     double  *At;			 /* arrays for A^T */
     int     *iAt, *kAt;
 
-    int     i,j,iter,v=5,status=5;
+    int     i,j,iter,v=verbose,status=5;
 
     double  primal_obj, dual_obj;
 

@@ -40,7 +40,7 @@ def test_cl_solvers_parallel(device, name, solver_cls, problem_func):
     from pycllp.lp import GeneralLP
     from pycllp.solvers import solver_registry
 
-    args = perturb_problem(problem_func, 2)
+    args = perturb_problem(problem_func, 1024)
 
     lp = GeneralLP(*args)
     slp = lp.to_standard_form()

@@ -23,7 +23,8 @@ class CyHSDSolver(BaseSolver):
             status[i] = hsd_solver(m, n, self.A.nnz,
                             self.A.indices, self.A.indptr, self.A.data,
                             self.b[i,:], self.c[i,:],
-                            self.f[i], x[i,:], y[i,:], w[i,:], z[i,:])
+                            self.f[i], x[i,:], y[i,:], w[i,:], z[i,:],
+                            verbose)
 
 
         self.x = x
