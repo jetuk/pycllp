@@ -12,7 +12,7 @@ except ImportError:
     pass
 from helpers import non_cl_solvers, cl_solvers, devices
 from itertools import product
-
+from pycllp.lp import SparseMatrix, StandardLP
 
 def small_problem():
     from scipy.sparse import csc_matrix
@@ -28,19 +28,19 @@ def small_problem():
     b = np.array([  5.187898,    16.76453246])
 
 
-    return A.row, A.col, A.data, b, c
+    return SparseMatrix(matrix=A), b, c, 0.0
 
 
 def parallel_small_problem(N=1024):
     """
     Take small_problem and perturb randomly to generate N problems
     """
-    Ai, Aj, Adata, b, c = small_problem()
+    A, b, c = small_problem()
     np.random.seed(0)
     b = (0.5+np.random.rand( N,len(b) ))*b
     c = (0.5+np.random.rand( N,len(c) ))*c
 
-    return Ai, Aj, Adata, b, c
+    return A, b, c, 0.0
 
 @pytest.mark.noncl
 @pytest.mark.parametrize("name,solver_cls",non_cl_solvers)
@@ -55,7 +55,6 @@ def test_cl_solvers(device, name, solver_cls):
     pytest_solver(name, solver_cls, [ctx, queue])
 
 def pytest_solver(name, solver_cls, solver_args):
-    from pycllp.lp import StandardLP
     lp = StandardLP(*small_problem())
 
     solver = solver_cls(*solver_args)
@@ -71,8 +70,6 @@ def pytest_solver(name, solver_cls, solver_args):
 @pytest.mark.parametrize("device,name,solver_cls",
     [(d,n,s) for d,(n,s) in product(devices, cl_solvers)])
 def test_cl_solvers_parallel(device, name, solver_cls):
-    print("Device", device)
-    from pycllp.lp import StandardLP
     from pycllp.solvers import solver_registry
 
     args = parallel_small_problem()

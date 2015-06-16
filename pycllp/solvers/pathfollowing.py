@@ -38,7 +38,7 @@ class DensePathFollowingSolver(BaseSolver):
         n = self.n
         m = self.m
         m2 = m+n
-        A = self.A.todense()
+        A = self.A.todense(problem=ilp)
         b = self.b[ilp, :]
         c = self.c[ilp, :]
         f = self.f[ilp]
@@ -81,7 +81,7 @@ class DensePathFollowingSolver(BaseSolver):
 
         # 	Display Banner.
         if verbose > 0:
-            print("m = {:d},n = {:d},nz = {:d}".format(m, n, self.A.nnz))
+            print("m = {:d},n = {:d},nz = {:d}".format(m, n, self.A.nnzeros))
             print(
             """--------------------------------------------------------------------------
                      |           Primal          |            Dual           |       |

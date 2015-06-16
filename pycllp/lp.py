@@ -12,48 +12,158 @@ import sys
 import numpy as np
 from scipy.sparse import vstack, coo_matrix
 
-class BaseLP(object):
+class SparseMatrix(object):
+    """
+    Sparse matrix data structure used by this package. It contains a single
+    sparse structure, based on i,j coordinate arrays, and multi-dimensional
+    data. Therefore many problems with the same structure but different values
+    of A can be stored here.
+
+    The structure is similar to the coo_matrix from scipy.sparse
+    """
+    def __init__(self, rows=None, cols=None, data=None, matrix=None):
+        """
+        SparseMatrix can be initiliased in two different ways,
+        :param rows: array_like of i coordinates
+        :param cols: array_like of j coordinates
+        :param data: array_like of nonzero elements in A
+
+        Or with a scipy sparse matrix
+        :param matrix: scipy sparse matrix
+        """
+        if matrix is not None:
+            # Create coordinate structure from data
+            tmp = matrix.tocoo()
+            self.rows = tmp.row
+            self.cols = tmp.col
+            # data reshaped so first dimension is the number of scenarios
+            self.data = np.reshape(tmp.data, (1, len(tmp.data)))
+        elif data is not None:
+            if not len(rows) == len(cols) == len(data):
+                raise ValueError("Arrays rows, cols and data must be the same length.")
+            self.rows = np.array(rows)
+            self.cols = np.array(cols)
+            self.data = np.array(data)
+            if self.data.ndim == 1: # Ensure data is 2-dimensional
+                self.data = np.reshape(self.data, (1, len(self.data)))
+        else:
+            # Setup empty matrix
+            self.rows = np.array([])
+            self.cols = np.array([])
+            self.data = np.array([[]])
+
+    @property
+    def nrows(self, ):
+        try:
+            return self.rows.max() + 1
+        except ValueError:
+            return 0
+
+    @property
+    def ncols(self, ):
+        try:
+            return self.cols.max() + 1
+        except ValueError:
+            return 0
+
+    @property
+    def nnzeros(self, ):
+        return len(self.rows)
+
+    @property
+    def nproblems(self, ):
+        return self.data.shape[0]
+
+    def add_value(self, row, col, value):
+        """
+        Add value(s) to the sparse matrix
+
+        :param rowi: row coordinate of entry
+        :param col: col coordinate of entry
+        :param value: value to apply to all problems. If scalar the same value
+            is stored in all problems. Otherwise must be an array_like with same
+            length as number of problems.
+        """
+        if row < 0 or col < 0:
+            raise ValueError("Coordinates (i,j) must be >= 0")
+        if not np.isscalar(value):
+            if len(value) != self.data.shape[0]:
+                raise ValueError("The number of coordinate values must match the number of problems.")
+
+        # Check for existing entry
+        ind = (self.rows==row) & (self.cols==col)
+        if ind.sum() == 1:
+            # existing entry; overwrite data
+            self.data[:,ind] = value
+        elif ind.sum() == 0:
+            # new entry
+            self.rows.resize(self.rows.shape[0]+1)
+            self.cols.resize(self.cols.shape[0]+1)
+            self.data.resize((self.data.shape[0],self.data.shape[1]+1))
+            self.rows[-1] = row
+            self.cols[-1] = col
+            self.data[:,-1] = value
+        else:
+            raise ValueError("Multiple entries with the same coordinate pair. Bad things have happened!")
+
+    def add_row(self, row, cols, value):
+        """
+        Add a row to the matrix.
+
+        :param row: Coordinate of the row
+        :param cols: iterable of column indices
+        :param values: array_like either scalar, 1D or 2D. If 1D must be same length as
+            cols, if the 2D shape is (problems, len(cols)).
+        """
+        v = np.array(value)
+        for j, col in enumerate(cols):
+            if np.isscalar(v):
+                self.add_value(row, col, v)
+            elif v.ndim == 1:
+                self.add_value(row, col, v[j])
+            elif v.ndim == 2:
+                self.add_vlaue(row, col, v[:,j])
+            else:
+                raise ValueError("Inconsistent data array provided.")
+
+    def add_col(self, col, rows, value):
+        """
+        Add a row to the matrix.
+
+        :param col: Coordinate of the column
+        :param rows: iterable of row indices
+        :param values: array_like either scalar, 1D or 2D. If 1D must be same length as
+            cols, if the 2D shape is (problems, len(cols)).
+        """
+        v = np.array(value)
+        for i, row in enumerate(rows):
+            if np.isscalar(v):
+                self.add_value(row, col, v)
+            elif v.ndim == 1:
+                self.add_value(row, col, v[i])
+            elif v.ndim == 2:
+                self.add_vlaue(row, col, v[:,i])
+            else:
+                raise ValueError("Inconsistent data array provided.")
+
+    def tocoo(self, problem=0):
+        return coo_matrix( (self.data[problem,:], (self.rows, self.cols)) )
+
+    def tocsc(self, problem=0):
+        return self.tocoo().tocsc()
+
+    def todense(self, problem=0):
+        return self.tocoo().todense()
+
+
+
+class StandardLP(object):
     """
     Base class for LP models.
 
     A matrix is stored as a list of coordinates.
     """
-    def __init__(self, Ai, Aj, Adata, b, c, f=0.0):
-
-        self.Ai = Ai
-        self.Aj = Aj
-        # Convert data matrices to 2-dimensions
-        # first dimension is the number of problems.
-        self.Adata = Adata
-        if self.Adata.ndim == 1:
-            self.Adata = np.reshape(Adata, (1, len(Adata)))
-
-        self.b = b
-        if self.b.ndim == 1:
-            self.b = np.reshape(b, (1, len(b)))
-
-        self.c = c
-        if self.c.ndim == 1:
-            self.c = np.reshape(c, (1, len(c)))
-        if np.isscalar(f):
-            self.f = np.ones(self.c.shape[0])*f
-        else:
-            self.f = f
-
-    @property
-    def m(self,):
-        """Number of rows (constraints)"""
-        return self.A.shape[0]
-
-
-    @property
-    def n(self,):
-        """Number of columns (variables)"""
-        return self.A.shape[1]
-
-class StandardLP(BaseLP):
-
-    def __init__(self, Ai, Aj, Adata, b, c, f=0.0):
+    def __init__(self, A=None, b=None, c=None, f=None):
         """
         Intialise with following general form,
 
@@ -71,16 +181,66 @@ class StandardLP(BaseLP):
         :param b: constraint upper bounds
         :param c: objective function coefficients
         """
-        BaseLP.__init__(self, Ai, Aj, Adata, b, c, f=f)
+        if A is not None:
+            if b is None or c is None or f is None:
+                raise ValueError("If A matrix is provided then b, c and f must also be provided")
+
+            self.A = A
+            nprb = self.A.nproblems
+
+            self.b = np.array(b)
+            if self.b.ndim == 1:
+                self.b =  np.array(np.dot(np.ones((nprb,1)),np.matrix(self.b)))
+
+            self.c = np.array(c)
+            if self.c.ndim == 1:
+                self.c =  np.array(np.dot(np.ones((nprb,1)),np.matrix(self.c)))
+
+            if np.isscalar(f):
+                self.f = np.ones(nprb)*f
+            else:
+                self.f = np.array(f)
+        else:
+            # A not provided, create empty arrays
+            self.A = SparseMatrix()
+            self.b = np.array([[]])
+            self.c = np.array([[]])
+            self.f = np.array([])
+
+    @property
+    def nrows(self, ):
+        return self.A.nrows
+
+    @property
+    def ncols(self, ):
+        return self.A.ncols
+
+    @property
+    def nnzeros(self, ):
+        return self.A.nnzeros
+
+    @property
+    def nproblems(self, ):
+        return self.A.nproblems
+
+    @property
+    def m(self,):
+        """Number of rows (constraints)"""
+        return self.nrows
+
+    @property
+    def n(self,):
+        """Number of columns (variables)"""
+        return self.ncols
 
     def init(self, solver):
-        solver.init(self.Ai, self.Aj, self.Adata, self.b, self.c, self.f)
+        solver.init(self.A, self.b, self.c, self.f)
 
     def solve(self, solver, verbose=0):
         return solver.solve(verbose=verbose)
 
 
-class GeneralLP(BaseLP):
+class GeneralLP(StandardLP):
 
     def __init__(self, Ai, Aj, Adata, b, c, r, l, u, f=0.0):
         """
@@ -103,7 +263,7 @@ class GeneralLP(BaseLP):
         :param l: variable lower bounds
         :param u: variable upper bounds
         """
-        BaseLP.__init__(self, Ai, Aj, Adata, b, c, f=f)
+        StandardLP.__init__(self, Ai, Aj, Adata, b, c, f=f)
         self.r = r
         if self.r.ndim == 1:
             self.r = np.reshape(r, (1, len(r)))

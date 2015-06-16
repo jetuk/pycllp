@@ -37,10 +37,11 @@ class HSDSolver(BaseSolver):
     def _solve(self, ilp, verbose=0):
         n = self.n
         m = self.m
-        nz = self.A.nnz
-        A = self.A.data
-        iA = self.A.indices
-        kA = self.A.indptr
+        Acsc = self.A.tocsc(problem=ilp)
+        nz = Acsc.nnz
+        A = Acsc.data
+        iA = Acsc.indices
+        kA = Acsc.indptr
         b = self.b[ilp,:]
         c= self.c[ilp,:]
         f=self.f[ilp]
