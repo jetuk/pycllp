@@ -30,6 +30,7 @@ class BaseSolver(with_metaclass(MetaSolver)):
         self.f = np.array(f)
         self.m, self.n = A.nrows, A.ncols
 
+
     def solve(self, ):
         raise NotImplementedError()
 

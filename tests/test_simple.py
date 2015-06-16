@@ -27,7 +27,6 @@ def small_problem():
     c = np.array([ 1.10685436,  3.67678309,  2.04570983])
     b = np.array([  5.187898,    16.76453246])
 
-
     return SparseMatrix(matrix=A), b, c, 0.0
 
 
@@ -35,12 +34,13 @@ def parallel_small_problem(N=1024):
     """
     Take small_problem and perturb randomly to generate N problems
     """
-    A, b, c = small_problem()
+    Ai, Aj, Adata, b, c = small_problem()
     np.random.seed(0)
     b = (0.5+np.random.rand( N,len(b) ))*b
     c = (0.5+np.random.rand( N,len(c) ))*c
 
     return A, b, c, 0.0
+
 
 @pytest.mark.noncl
 @pytest.mark.parametrize("name,solver_cls",non_cl_solvers)

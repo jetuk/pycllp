@@ -12,6 +12,7 @@ import sys
 import numpy as np
 from scipy.sparse import vstack, coo_matrix
 
+
 class SparseMatrix(object):
     """
     Sparse matrix data structure used by this package. It contains a single
