@@ -229,7 +229,6 @@ class ClHSDSolver(BaseSolver):
         cl.enqueue_copy(queue, self.x, x)
         cl.enqueue_copy(queue, self.y, y)
 
-        print(self.x, self.y, self.status)
         self.x = self.x.reshape((len(self.status),n))
         self.y = self.y.reshape((len(self.status),m))
 

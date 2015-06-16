@@ -13,8 +13,21 @@ import numpy as np
 from scipy.sparse import vstack, coo_matrix
 
 class BaseLP(object):
-    def __init__(self, A, b, c, f=0.0):
-        self.A = A.tocsc().sorted_indices()
+    """
+    Base class for LP models.
+
+    A matrix is stored as a list of coordinates.
+    """
+    def __init__(self, Ai, Aj, Adata, b, c, f=0.0):
+
+        self.Ai = Ai
+        self.Aj = Aj
+        # Convert data matrices to 2-dimensions
+        # first dimension is the number of problems.
+        self.Adata = Adata
+        if self.Adata.ndim == 1:
+            self.Adata = np.reshape(Adata, (1, len(Adata)))
+
         self.b = b
         if self.b.ndim == 1:
             self.b = np.reshape(b, (1, len(b)))
@@ -40,7 +53,7 @@ class BaseLP(object):
 
 class StandardLP(BaseLP):
 
-    def __init__(self, A, b, c, f=0.0):
+    def __init__(self, Ai, Aj, Adata, b, c, f=0.0):
         """
         Intialise with following general form,
 
@@ -58,11 +71,10 @@ class StandardLP(BaseLP):
         :param b: constraint upper bounds
         :param c: objective function coefficients
         """
-        BaseLP.__init__(self, A, b, c, f=f)
+        BaseLP.__init__(self, Ai, Aj, Adata, b, c, f=f)
 
     def init(self, solver):
-        solver.init(self.A, self.b, self.c, self.f)
-
+        solver.init(self.Ai, self.Aj, self.Adata, self.b, self.c, self.f)
 
     def solve(self, solver, verbose=0):
         return solver.solve(verbose=verbose)
@@ -70,7 +82,7 @@ class StandardLP(BaseLP):
 
 class GeneralLP(BaseLP):
 
-    def __init__(self, A, b, c, r, l, u, f=0.0):
+    def __init__(self, Ai, Aj, Adata, b, c, r, l, u, f=0.0):
         """
         Intialise with following general form,
 
@@ -91,7 +103,7 @@ class GeneralLP(BaseLP):
         :param l: variable lower bounds
         :param u: variable upper bounds
         """
-        BaseLP.__init__(self, A, b, c, f=f)
+        BaseLP.__init__(self, Ai, Aj, Adata, b, c, f=f)
         self.r = r
         if self.r.ndim == 1:
             self.r = np.reshape(r, (1, len(r)))

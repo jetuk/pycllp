@@ -19,7 +19,7 @@ def small_problem():
     A = np.array([3,2,2,5,1,3], dtype=np.float)   # Only for "<" constraint equations!
     iA = np.array([0, 1, 0, 1, 0, 1], )
     kA = np.array([0, 2, 4, 6],)
-    A = csc_matrix((A,iA,kA))
+    A = csc_matrix((A,iA,kA)).tocoo()
 
     b = np.array([10, 15], dtype=np.float)       # Right hand side vector.
     c = np.array([2,3,4], dtype=np.float )     # coefficients of variables in objective function.
@@ -28,22 +28,19 @@ def small_problem():
     b = np.array([  5.187898,    16.76453246])
 
 
-    print(A.todense())
-    return A, b, c
+    return A.row, A.col, A.data, b, c
 
 
 def parallel_small_problem(N=1024):
     """
     Take small_problem and perturb randomly to generate N problems
     """
-    A, b, c = small_problem()
+    Ai, Aj, Adata, b, c = small_problem()
     np.random.seed(0)
     b = (0.5+np.random.rand( N,len(b) ))*b
     c = (0.5+np.random.rand( N,len(c) ))*c
-    print('A',A)
-    print('b',b)
-    print('c',c)
-    return A, b, c
+
+    return Ai, Aj, Adata, b, c
 
 @pytest.mark.noncl
 @pytest.mark.parametrize("name,solver_cls",non_cl_solvers)
@@ -78,9 +75,8 @@ def test_cl_solvers_parallel(device, name, solver_cls):
     from pycllp.lp import StandardLP
     from pycllp.solvers import solver_registry
 
-    A,b,c = parallel_small_problem()
-    N = b.shape[0]
-    lp = StandardLP(A,b,c)
+    args = parallel_small_problem()
+    lp = StandardLP(*args)
     ctx = cl.Context(devices=[device])
     queue = cl.CommandQueue(ctx)
 
