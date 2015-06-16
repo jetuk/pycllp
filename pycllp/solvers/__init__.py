@@ -26,7 +26,7 @@ class BaseSolver(with_metaclass(MetaSolver)):
 
         # Number of simultaneous problems each to be solved in a
         # cl workgroup
-        self.nlp = self.b.shape[0]
+        self.nlp = self.A.nproblems
         self.f = np.array(f)
         self.m, self.n = A.nrows, A.ncols
 

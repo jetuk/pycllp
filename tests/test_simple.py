@@ -34,12 +34,12 @@ def parallel_small_problem(N=1024):
     """
     Take small_problem and perturb randomly to generate N problems
     """
-    Ai, Aj, Adata, b, c = small_problem()
+    A, b, c, f = small_problem()
     np.random.seed(0)
     b = (0.5+np.random.rand( N,len(b) ))*b
     c = (0.5+np.random.rand( N,len(c) ))*c
 
-    return A, b, c, 0.0
+    return A, b, c, f
 
 
 @pytest.mark.noncl
@@ -87,5 +87,5 @@ def test_cl_solvers_parallel(device, name, solver_cls):
 
     np.testing.assert_almost_equal(solver.status, pysolver.status,)
     np.testing.assert_almost_equal(
-                np.sum(solver.x*c,axis=1),
-                np.sum(pysolver.x*c,axis=1).astype(np.float32), decimal=4)
+                np.sum(solver.x,axis=1),
+                np.sum(pysolver.x,axis=1).astype(np.float32), decimal=4)

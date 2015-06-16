@@ -6,14 +6,14 @@ import pyopencl as cl
 import os
 from ..linalg import smx, atnum
 from ..ldlt import LDLTFAC
-from . import BaseSolver
+from . import BaseCSCSolver
 import numpy as np
 
 EPS = 1.0e-12
 MAX_ITER = 200
 
 
-class ClHSDSolver(BaseSolver):
+class ClHSDSolver(BaseCSCSolver):
     name = 'clhsd'
 
     def __init__(self, ctx, queue):
@@ -21,7 +21,7 @@ class ClHSDSolver(BaseSolver):
         self.queue = queue
 
     def init(self, A, b, c, f=0.0):
-        BaseSolver.init(self, A, b, c, f=f)
+        BaseCSCSolver.init(self, A, b, c, f=f)
 
         self.init_cl()
 
