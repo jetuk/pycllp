@@ -13,10 +13,12 @@ class MetaSolver(type):
 class BaseSolver(with_metaclass(MetaSolver)):
     name = None
 
-    def init(self, A, b, c, f=0.0):
-        self.A = A.tocsc()
-        if not self.A.has_sorted_indices:
-            self.A.sort_indices()
+    def init(self, Ai, Aj, Adata, b, c, f=0.0):
+        self.Ai = Ai
+        self.Aj = Aj
+        self.Adata = Adata
+        if self.Adata.ndim == 1:
+            self.Adata = np.reshape(Adata, (1, len(Adata)))
 
         self.b = b
         if self.b.ndim == 1:
@@ -30,11 +32,19 @@ class BaseSolver(with_metaclass(MetaSolver)):
         # cl workgroup
         self.nlp = self.b.shape[0]
         self.f = np.array(f)
-        self.m,self.n = A.shape
+        self.m, self.n = Ai.max(), Aj.max()
 
     def solve(self, ):
         raise NotImplementedError()
 
+
+class BaseCSCSolver(BaseSolver):
+
+    def init(self, Ai, Aj, Adata, b, c, f=0.0):
+        BaseSolver.init(self, Ai, Aj, Adata, b, c, f=f)
+        from scipy.sparse import coo_matrix
+        self.A = coo_matrix((np.zeros(len(Ai)), (Ai, Aj)))
+        self.A = self.A.tocsc()
 
 # register solvers
 from .cython import CyHSDSolver
