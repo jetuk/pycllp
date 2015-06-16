@@ -6,7 +6,10 @@ Simple test for different solvers of a small problem
 from __future__ import print_function
 import numpy as np
 import pytest
-import pyopencl as cl
+try:
+    import pyopencl as cl
+except ImportError:
+    pass
 from helpers import non_cl_solvers, cl_solvers, devices
 from itertools import product
 

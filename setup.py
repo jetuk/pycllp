@@ -19,7 +19,7 @@ cyipo = Extension('pycllp._ipo',
 
 setup(name='pycllp',
       packages=['pycllp', 'pycllp.solvers'],
-      install_requires=['numpy>=1.7', 'scipy>=0.15', 'pyopencl>=2015.0',
+      install_requires=['numpy>=1.7', 'scipy>=0.14', 'pyopencl>=2015.0',
                         'cython>0.17'],
       ext_modules=[cyipo],
       cmdclass = {'build_ext': build_ext},

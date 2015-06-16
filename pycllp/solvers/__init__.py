@@ -37,7 +37,22 @@ class BaseSolver(with_metaclass(MetaSolver)):
 
 
 # register solvers
-from .cython import CyHSDSolver
-from .hsd import HSDSolver
-from .cl import ClHSDSolver
-from .pathfollowing import DensePathFollowingSolver
+try:
+    from .cython import CyHSDSolver
+except ImportError:
+    pass
+
+try:
+    from .hsd import HSDSolver
+except ImportError:
+    pass
+
+try:
+    from .cl import ClHSDSolver
+except ImportError:
+    pass
+
+try:
+    from .pathfollowing import DensePathFollowingSolver
+except ImportError:
+    pass

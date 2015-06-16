@@ -1,6 +1,9 @@
 import pytest
 import numpy as np
-import pyopencl as cl
+try:
+    import pyopencl as cl
+except ImportError:
+    cl = None
 import vanderbei_problems
 from helpers import non_cl_solvers, cl_solvers, devices, perturb_problem
 import inspect
