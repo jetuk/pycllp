@@ -29,7 +29,7 @@ class TestScalarMatrix(object):
         assert A.nnzeros == 6
         assert A.nproblems == 1
 
-    def test_add_value(self, ):
+    def test_set_value(self, ):
         A = SparseMatrix()
 
         A.set_value(0, 0, 1.0)
@@ -44,6 +44,23 @@ class TestScalarMatrix(object):
         assert A.nrows == 1
         assert A.ncols == 2
         assert A.nnzeros == 2
+        assert A.nproblems == 1
+
+        A._del_value(0, 0)
+
+        assert A.nrows == 1
+        # There are still two columns because deleting anything
+        # but the last entry does not alter the size.
+        assert A.ncols == 2
+        assert A.nnzeros == 1
+        assert A.nproblems == 1
+
+        A._del_value(0, 1)
+
+        assert A.nrows == 0
+        # Now now columns or rows as there are no values in matrix
+        assert A.ncols == 0
+        assert A.nnzeros == 0
         assert A.nproblems == 1
 
     def test_add_row(self, ):

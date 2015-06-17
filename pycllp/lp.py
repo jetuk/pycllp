@@ -107,6 +107,24 @@ class SparseMatrix(object):
         else:
             raise ValueError("Multiple entries with the same coordinate pair. Bad things have happened!")
 
+    def _del_value(self, row, col):
+        """
+        Delete value(s) from the sparse matrix. Use with caution as it can
+        result it removing entire rows or columns which may create poorly
+        formed matrices.
+
+        :param row: row coordinate of entry
+        :param col: col coordinate of entry
+        """
+        ind = (self.rows == row) & (self.cols == col)
+        if ind.sum() == 1:
+            # single entry to remove
+            self.rows = self.rows[np.logical_not(ind)]
+            self.cols = self.cols[np.logical_not(ind)]
+            self.data = self.data[:, np.logical_not(ind)]
+        else:
+            raise ValueError("Multiple entries with the same coordinate pair. Bad things have happened!")
+
     def add_row(self, cols, value):
         """
         Add a row to the matrix.
