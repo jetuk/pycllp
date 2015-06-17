@@ -32,14 +32,14 @@ class TestScalarMatrix(object):
     def test_add_value(self, ):
         A = SparseMatrix()
 
-        A.add_value(0, 0, 1.0)
+        A.set_value(0, 0, 1.0)
 
         assert A.nrows == 1
         assert A.ncols == 1
         assert A.nnzeros == 1
         assert A.nproblems == 1
 
-        A.add_value(0, 1, 1.0)
+        A.set_value(0, 1, 1.0)
 
         assert A.nrows == 1
         assert A.ncols == 2
@@ -49,15 +49,15 @@ class TestScalarMatrix(object):
     def test_add_row(self, ):
         A = SparseMatrix()
 
-        A.add_row(0, [0,2,3], [1.0,1.0,1.0])
-
+        row = A.add_row([0,2,3], [1.0,1.0,1.0])
+        assert row == 0
         assert A.nrows == 1
         assert A.ncols == 4
         assert A.nnzeros == 3
         assert A.nproblems == 1
 
-        A.add_row(1, [1], [1.0])
-
+        row = A.add_row([1], [1.0])
+        assert row == 1
         assert A.nrows == 2
         assert A.ncols == 4
         assert A.nnzeros == 4
@@ -67,15 +67,15 @@ class TestScalarMatrix(object):
     def test_add_col(self, ):
         A = SparseMatrix()
 
-        A.add_col(0, [0,2,3], [1.0,1.0,1.0])
-
+        col = A.add_col([0,2,3], [1.0,1.0,1.0])
+        assert col == 0
         assert A.nrows == 4
         assert A.ncols == 1
         assert A.nnzeros == 3
         assert A.nproblems == 1
 
-        A.add_col(1, [1], [1.0])
-
+        col = A.add_col([1], [1.0])
+        assert col == 1
         assert A.nrows == 4
         assert A.ncols == 2
         assert A.nnzeros == 4

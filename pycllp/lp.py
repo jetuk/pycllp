@@ -75,9 +75,9 @@ class SparseMatrix(object):
     def nproblems(self, ):
         return self.data.shape[0]
 
-    def add_value(self, row, col, value):
+    def set_value(self, row, col, value):
         """
-        Add value(s) to the sparse matrix
+        Set value(s) to the sparse matrix
 
         :param rowi: row coordinate of entry
         :param col: col coordinate of entry
@@ -107,7 +107,7 @@ class SparseMatrix(object):
         else:
             raise ValueError("Multiple entries with the same coordinate pair. Bad things have happened!")
 
-    def add_row(self, row, cols, value):
+    def add_row(self, cols, value):
         """
         Add a row to the matrix.
 
@@ -116,36 +116,42 @@ class SparseMatrix(object):
         :param values: array_like either scalar, 1D or 2D. If 1D must be same length as
             cols, if the 2D shape is (problems, len(cols)).
         """
+        # next row index is the current size of the matrix
+        row = self.nrows
         v = np.array(value)
         for j, col in enumerate(cols):
             if np.isscalar(v):
-                self.add_value(row, col, v)
+                self.set_value(row, col, v)
             elif v.ndim == 1:
-                self.add_value(row, col, v[j])
+                self.set_value(row, col, v[j])
             elif v.ndim == 2:
-                self.add_vlaue(row, col, v[:,j])
+                self.set_value(row, col, v[:, j])
             else:
                 raise ValueError("Inconsistent data array provided.")
+        return row
 
-    def add_col(self, col, rows, value):
+    def add_col(self, rows, value):
         """
-        Add a row to the matrix.
+        Add a column to the matrix.
 
         :param col: Coordinate of the column
         :param rows: iterable of row indices
         :param values: array_like either scalar, 1D or 2D. If 1D must be same length as
             cols, if the 2D shape is (problems, len(cols)).
         """
+        # next column index is the current size of the matrix
+        col = self.ncols
         v = np.array(value)
         for i, row in enumerate(rows):
             if np.isscalar(v):
-                self.add_value(row, col, v)
+                self.set_value(row, col, v)
             elif v.ndim == 1:
-                self.add_value(row, col, v[i])
+                self.set_value(row, col, v[i])
             elif v.ndim == 2:
-                self.add_vlaue(row, col, v[:,i])
+                self.set_value(row, col, v[:, i])
             else:
                 raise ValueError("Inconsistent data array provided.")
+        return col
 
     def tocoo(self, problem=0):
         return coo_matrix( (self.data[problem,:], (self.rows, self.cols)) )
