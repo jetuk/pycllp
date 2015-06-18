@@ -1,6 +1,7 @@
 from pycllp.lp import SparseMatrix, StandardLP
 import numpy as np
 from numpy.testing import assert_allclose
+import pytest
 
 class TestScalarMatrix(object):
 

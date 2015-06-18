@@ -389,7 +389,7 @@ class StandardLP(object):
 
 class GeneralLP(StandardLP):
 
-    def __init__(self, Ai, Aj, Adata, b, c, r, l, u, f=0.0):
+    def __init__(self, A=None, b=None, c=None, r=None, l=None, u=None, f=None):
         """
         Intialise with following general form,
 
@@ -402,26 +402,90 @@ class GeneralLP(StandardLP):
             b <= Ax <= b+r
             l <=  x <= u
 
-        :param A: scipy.sparse matrix (will be converted to CSC,
-            internally). Defines constraint coefficients.
+        :param A: SparseMatrix that defines constraint coefficients.
         :param b: constraint lower bounds
         :param c: objective function coefficients
         :param r: constraint range
         :param l: variable lower bounds
         :param u: variable upper bounds
         """
-        StandardLP.__init__(self, Ai, Aj, Adata, b, c, f=f)
-        self.r = r
-        if self.r.ndim == 1:
-            self.r = np.reshape(r, (1, len(r)))
+        StandardLP.__init__(self, A=A, b=b, c=c, f=f)
+        if A is not None:
+            if r is None or l is None or u is None:
+                raise ValueError("If A matrix is provided then r, l and u must also be provided.")
+            nprb = self.A.nproblems
 
-        self.l = l
-        if self.l.ndim == 1:
-            self.l = np.reshape(l, (1, len(l)))
+            self.r = np.array(r)
+            if self.r.ndim == 1:
+                self.r =  np.array(np.dot(np.ones((nprb,1)),np.matrix(self.r)))
 
-        self.u = u
-        if self.u.ndim == 1:
-            self.u = np.reshape(u, (1, len(u)))
+            self.l = np.array(l)
+            if self.l.ndim == 1:
+                self.l =  np.array(np.dot(np.ones((nprb,1)),np.matrix(self.l)))
+
+            self.u = np.array(u)
+            if self.u.ndim == 1:
+                self.u =  np.array(np.dot(np.ones((nprb,1)),np.matrix(self.u)))
+
+        else:
+            # A not provided, create empty arrays
+            self.r = np.array([[]])
+            self.l = np.array([[]])
+            self.u = np.array([[]])
+
+    def set_bound(self, row, lower_bound, bound_range):
+        """
+        Set bound data to the b and r arrays. Raises an error if row is greater than
+        current number of rows.
+        """
+        if row >= self.b.shape[1]:
+            raise ValueError("Can not set bounds for row that does not exist.")
+        self._set_bound(row, lower_bound, bound_range)
+
+    def _set_bound(self, row, lower_bound, bound_range):
+        """
+        Set bound data to the b and r arrays. Do not use this directly, add rows
+        using add_row.
+        """
+        super(GeneralLP, self)._set_bound(row, lower_bound)
+        if row >= self.r.shape[1]:
+            # New row beyond length of existing array
+            self.r.resize((self.r.shape[0], row+1))
+        self.r[:,row] = bound_range
+
+    def add_row(self, cols, value, lower_bound, bound_range):
+        """
+        Add row to the problem.
+
+        :param cols: iterable of column indices
+        :param value: data for the A matrix for the columns
+        :param lower_bound: minimum value for this row
+        :param range: range of the bounds of the row
+        """
+        row = self.A.add_row(cols, value)
+        self._set_bound(row, bound_range)
+        return row
+
+    def set_col_bounds(self, col, lower_bound, upper_bound):
+        """
+        Set variable bounds
+        """
+        if col >= self.l.shape[1]:
+            raise ValueError("Can not set bounds for column that does not exist.")
+        self.l[:, col] = lower_bound
+        self.u[: ,col] = upper_bound
+
+    def add_col(self, rows, value, obj):
+        """
+        Add column to the problem.
+
+        :param rows: iterable of row indices
+        :param value: data for the A matrix for the rows
+        :param bound: maximum value for this column
+        """
+        col = self.A.add_col(rows, value)
+        self._set_objective(col, obj)
+        return col
 
     def to_standard_form(self,):
         """
