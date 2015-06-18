@@ -163,3 +163,15 @@ class TestStandardLP(object):
         assert lp.nnzeros == 3
         assert lp.nproblems == 1
         assert_allclose(lp.b, [[1.0]])
+
+    def test_add_col(self, ):
+        lp = StandardLP()
+
+        col = lp.add_col([0,2,3], [1.0,1.0,1.0], 1.0)
+
+        assert col == 0
+        assert lp.nrows == 4
+        assert lp.ncols == 1
+        assert lp.nnzeros == 3
+        assert lp.nproblems == 1
+        assert_allclose(lp.c, [[1.0]])

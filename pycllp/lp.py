@@ -340,6 +340,28 @@ class StandardLP(object):
         self._set_bound(row, bound)
         return row
 
+    def _set_objective(self, col, obj):
+        """
+        Set objective function coefficient to the c array. Do not use this
+        directly, add columns
+        """
+        if col >= self.c.shape[1]:
+            # New row beyond length of existing array
+            self.c.resize((self.c.shape[0], col+1))
+        self.c[:,col] = obj
+
+    def add_col(self, rows, value, obj):
+        """
+        Add column to the problem.
+
+        :param rows: iterable of row indices
+        :param value: data for the A matrix for the rows
+        :param bound: maximum value for this column
+        """
+        col = self.A.add_col(rows, value)
+        self._set_objective(col, obj)
+        return col
+
     def init(self, solver):
         solver.init(self.A, self.b, self.c, self.f)
 
