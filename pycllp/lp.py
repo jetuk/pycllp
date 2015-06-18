@@ -148,6 +148,36 @@ class SparseMatrix(object):
                 raise ValueError("Inconsistent data array provided.")
         return row
 
+    def _del_row(self, row):
+        """
+        Delete a row from the matrix. Use with caution as it can result in gaps
+        in the matrix.
+        """
+        # find all coordinates with the row
+        ind = (self.rows == row)
+        self.rows = self.rows[np.logical_not(ind)]
+        self.cols = self.cols[np.logical_not(ind)]
+        self.data = self.data[:, np.logical_not(ind)]
+
+    def update_row(self, row, cols, value):
+        """
+        Update a row in the matrix. If the row does not exist it will be added.
+        Existing entries for the row will be removed first.
+        """
+        # Remove the row first.
+        self._del_row(row)
+        # Now add new data
+        v = np.array(value)
+        for j, col in enumerate(cols):
+            if np.isscalar(v):
+                self.set_value(row, col, v)
+            elif v.ndim == 1:
+                self.set_value(row, col, v[j])
+            elif v.ndim == 2:
+                self.set_value(row, col, v[:, j])
+            else:
+                raise ValueError("Inconsistent data array provided.")
+
     def add_col(self, rows, value):
         """
         Add a column to the matrix.
@@ -170,6 +200,36 @@ class SparseMatrix(object):
             else:
                 raise ValueError("Inconsistent data array provided.")
         return col
+
+    def _del_col(self, col):
+        """
+        Delete a column from the matrix. Use with caution as it can result in
+        gaps in the matrix.
+        """
+        # find all coordinates with the row
+        ind = (self.cols == col)
+        self.rows = self.rows[np.logical_not(ind)]
+        self.cols = self.cols[np.logical_not(ind)]
+        self.data = self.data[:, np.logical_not(ind)]
+
+    def update_col(self, col, rows, value):
+        """
+        Update a column in the matrix. If the row does not exist it will be added.
+        Existing entries for the row will be removed first.
+        """
+        # Remove the row first.
+        self._del_row(row)
+        # Now add new data
+        v = np.array(value)
+        for i, row in enumerate(rows):
+            if np.isscalar(v):
+                self.set_value(row, col, v)
+            elif v.ndim == 1:
+                self.set_value(row, col, v[i])
+            elif v.ndim == 2:
+                self.set_value(row, col, v[:, i])
+            else:
+                raise ValueError("Inconsistent data array provided.")
 
     def tocoo(self, problem=0):
         return coo_matrix( (self.data[problem,:], (self.rows, self.cols)) )

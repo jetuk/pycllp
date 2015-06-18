@@ -80,6 +80,19 @@ class TestScalarMatrix(object):
         assert A.nnzeros == 4
         assert A.nproblems == 1
 
+        A._del_row(1)
+
+        assert A.nrows == 1
+        assert A.ncols == 4
+        assert A.nnzeros == 3
+        assert A.nproblems == 1
+
+        A._del_row(0)
+
+        assert A.nrows == 0
+        assert A.ncols == 0
+        assert A.nnzeros == 0
+        assert A.nproblems == 1
 
     def test_add_col(self, ):
         A = SparseMatrix()
@@ -96,6 +109,20 @@ class TestScalarMatrix(object):
         assert A.nrows == 4
         assert A.ncols == 2
         assert A.nnzeros == 4
+        assert A.nproblems == 1
+
+        A._del_col(1)
+
+        assert A.nrows == 4
+        assert A.ncols == 1
+        assert A.nnzeros == 3
+        assert A.nproblems == 1
+
+        A._del_col(0)
+
+        assert A.nrows == 0
+        assert A.ncols == 0
+        assert A.nnzeros == 0
         assert A.nproblems == 1
 
 
