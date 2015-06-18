@@ -491,7 +491,7 @@ class GeneralLP(StandardLP):
         """
         Return an instance of StandardLP by factoring this problem.
         """
-        A = self.A.tocsc(copy=True)
+        A = self.A.tocsc()
         b = self.b.copy()
         c = self.c.copy()
         r = self.r.copy()
@@ -544,6 +544,6 @@ class GeneralLP(StandardLP):
 
         assert A.shape[0] == b.shape[1]
 
-        lp = StandardLP(A,b,c,f=f)
+        lp = StandardLP(SparseMatrix(matrix=A),b,c,f=f)
 
         return lp
