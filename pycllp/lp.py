@@ -318,6 +318,28 @@ class StandardLP(object):
         """Number of columns (variables)"""
         return self.ncols
 
+    def _set_bound(self, row, bound):
+        """
+        Set bound data to the b array. Do not use this directly, add rows
+        using add_row.
+        """
+        if row >= self.b.shape[1]:
+            # New row beyond length of existing array
+            self.b.resize((self.b.shape[0], row+1))
+        self.b[:,row] = bound
+
+    def add_row(self, cols, value, bound):
+        """
+        Add row to the problem.
+
+        :param cols: iterable of column indices
+        :param value: data for the A matrix for the columns
+        :param bound: maximum value for this row
+        """
+        row = self.A.add_row(cols, value)
+        self._set_bound(row, bound)
+        return row
+
     def init(self, solver):
         solver.init(self.A, self.b, self.c, self.f)
 

@@ -1,5 +1,6 @@
 from pycllp.lp import SparseMatrix, StandardLP
 import numpy as np
+from numpy.testing import assert_allclose
 
 class TestScalarMatrix(object):
 
@@ -126,7 +127,7 @@ class TestScalarMatrix(object):
         assert A.nproblems == 1
 
 
-class TestBaseLP(object):
+class TestStandardLP(object):
 
     def test_empty_init(self, ):
         lp = StandardLP()
@@ -146,7 +147,19 @@ class TestBaseLP(object):
 
         lp = StandardLP(A, b, c, f)
 
-        assert A.nrows == 3
-        assert A.ncols == 2
-        assert A.nnzeros == 6
-        assert A.nproblems == 1
+        assert lp.nrows == 3
+        assert lp.ncols == 2
+        assert lp.nnzeros == 6
+        assert lp.nproblems == 1
+
+    def test_add_row(self, ):
+        lp = StandardLP()
+
+        row = lp.add_row([0,2,3], [1.0,1.0,1.0], 1.0)
+
+        assert row == 0
+        assert lp.nrows == 1
+        assert lp.ncols == 4
+        assert lp.nnzeros == 3
+        assert lp.nproblems == 1
+        assert_allclose(lp.b, [[1.0]])
