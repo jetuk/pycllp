@@ -164,6 +164,12 @@ class TestStandardLP(object):
         assert lp.nproblems == 1
         assert_allclose(lp.b, [[1.0]])
 
+        lp.set_bound(0, 2.0)
+        assert_allclose(lp.b, [[2.0]])
+
+        with pytest.raises(ValueError):
+            lp.set_bound(1, 1.0)
+
     def test_add_col(self, ):
         lp = StandardLP()
 
@@ -175,3 +181,9 @@ class TestStandardLP(object):
         assert lp.nnzeros == 3
         assert lp.nproblems == 1
         assert_allclose(lp.c, [[1.0]])
+
+        lp.set_objective(0, 2.0)
+        assert_allclose(lp.c, [[2.0]])
+
+        with pytest.raises(ValueError):
+            lp.set_objective(1, 1.0)

@@ -318,6 +318,15 @@ class StandardLP(object):
         """Number of columns (variables)"""
         return self.ncols
 
+    def set_bound(self, row, bound):
+        """
+        Set bound data to the b array. raises an error if row is greater than
+        current number of rows.
+        """
+        if row >= self.b.shape[1]:
+            raise ValueError("Can not set bounds for row that does not exist.")
+        self._set_bound(row, bound)
+
     def _set_bound(self, row, bound):
         """
         Set bound data to the b array. Do not use this directly, add rows
@@ -339,6 +348,15 @@ class StandardLP(object):
         row = self.A.add_row(cols, value)
         self._set_bound(row, bound)
         return row
+
+    def set_objective(self, col, obj):
+        """
+        Set objective function coefficient to the c array. Raises an error if
+        col is greater than current number of columns
+        """
+        if col >= self.c.shape[1]:
+            raise ValueError("Can not set objective coefficient for column that does not exist.")
+        self._set_objective(col, obj)
 
     def _set_objective(self, col, obj):
         """
