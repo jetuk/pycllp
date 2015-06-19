@@ -1,4 +1,4 @@
-from pycllp.lp import SparseMatrix, StandardLP
+from pycllp.lp import SparseMatrix, StandardLP, GeneralLP
 import numpy as np
 from numpy.testing import assert_allclose
 import pytest
@@ -171,6 +171,11 @@ class TestStandardLP(object):
         with pytest.raises(ValueError):
             lp.set_bound(1, 1.0)
 
+        cols, value, bound = lp.get_row(0)
+        assert_allclose(cols, [0,2,3])
+        assert_allclose(value, [[1.0,1.0,1.0]])
+        assert bound == 2.0
+
     def test_add_col(self, ):
         lp = StandardLP()
 
@@ -188,3 +193,35 @@ class TestStandardLP(object):
 
         with pytest.raises(ValueError):
             lp.set_objective(1, 1.0)
+
+class TestGeneralLP(object):
+
+    def test_empty_init(self, ):
+        lp = GeneralLP()
+
+        assert lp.nrows == 0
+        assert lp.ncols == 0
+        assert lp.nnzeros == 0
+        assert lp.nproblems == 1
+
+    def test_array_init(self, ):
+        from scipy.sparse import csc_matrix
+        B = np.reshape(np.arange(1,7,dtype=np.float32),(3,2))
+        A = SparseMatrix(matrix=csc_matrix(B))
+        b = np.zeros(A.nrows)
+        c = np.zeros(A.ncols)
+        f = 0.0
+
+        lp = GeneralLP(A, b, c, f=f)
+
+        assert lp.nrows == 3
+        assert lp.ncols == 2
+        assert lp.nnzeros == 6
+        assert lp.nproblems == 1
+
+    def test_gte_conversion(self, ):
+        lp = GeneralLP()
+
+        lp.add_row([0,1,2],[1.,1.,1.], 2.0, np.inf)
+
+        slp = lp.to_standard_form()

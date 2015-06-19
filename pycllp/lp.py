@@ -148,6 +148,17 @@ class SparseMatrix(object):
                 raise ValueError("Inconsistent data array provided.")
         return row
 
+    def get_row(self, row):
+        """
+        Get row data from the matrix
+
+        :param row: row index
+        """
+        ind = row == self.rows
+        cols = self.cols[ind]
+        value = self.data[:, ind]
+        return cols, value
+
     def _del_row(self, row):
         """
         Delete a row from the matrix. Use with caution as it can result in gaps
@@ -349,6 +360,16 @@ class StandardLP(object):
         self._set_bound(row, bound)
         return row
 
+    def get_row(self, row):
+        """
+        Get row data
+
+        :param row: row index
+        """
+        cols, value = self.A.get_row(row)
+        bound = self.b[row]
+        return cols, value, bound
+
     def set_objective(self, col, obj):
         """
         Set objective function coefficient to the c array. Raises an error if
@@ -389,7 +410,7 @@ class StandardLP(object):
 
 class GeneralLP(StandardLP):
 
-    def __init__(self, A=None, b=None, c=None, r=None, l=None, u=None, f=None):
+    def __init__(self, A=None, b=None, c=None, d=None, l=None, u=None, f=None):
         """
         Intialise with following general form,
 
@@ -399,83 +420,112 @@ class GeneralLP(StandardLP):
 
         subject to:
         .. math:
-            b <= Ax <= b+r
+            b <= Ax <= d
             l <=  x <= u
 
         :param A: SparseMatrix that defines constraint coefficients.
         :param b: constraint lower bounds
         :param c: objective function coefficients
-        :param r: constraint range
+        :param d: constraint upper bounds
         :param l: variable lower bounds
         :param u: variable upper bounds
         """
         StandardLP.__init__(self, A=A, b=b, c=c, f=f)
         if A is not None:
-            if r is None or l is None or u is None:
-                raise ValueError("If A matrix is provided then r, l and u must also be provided.")
             nprb = self.A.nproblems
 
-            self.r = np.array(r)
-            if self.r.ndim == 1:
-                self.r =  np.array(np.dot(np.ones((nprb,1)),np.matrix(self.r)))
+            if d is not None:
+                self.d = np.array(d)
+                if self.d.ndim == 1:
+                    self.d =  np.array(np.dot(np.ones((nprb,1)),np.matrix(self.d)))
+            else:
+                # Default to infinite bounds on the rows
+                self.d = np.ones(self.b.shape)*np.inf
 
-            self.l = np.array(l)
-            if self.l.ndim == 1:
-                self.l =  np.array(np.dot(np.ones((nprb,1)),np.matrix(self.l)))
+            if l is not None:
+                self.l = np.array(l)
+                if self.l.ndim == 1:
+                    self.l =  np.array(np.dot(np.ones((nprb,1)),np.matrix(self.l)))
+            else:
+                self.l = np.zeros(self.c.shape)
 
-            self.u = np.array(u)
-            if self.u.ndim == 1:
-                self.u =  np.array(np.dot(np.ones((nprb,1)),np.matrix(self.u)))
+            if u is not None:
+                self.u = np.array(u)
+                if self.u.ndim == 1:
+                    self.u =  np.array(np.dot(np.ones((nprb,1)),np.matrix(self.u)))
+            else:
+                self.u = np.ones(self.c.shape)*np.inf
 
         else:
             # A not provided, create empty arrays
-            self.r = np.array([[]])
+            self.d = np.array([[]])
             self.l = np.array([[]])
             self.u = np.array([[]])
 
-    def set_bound(self, row, lower_bound, bound_range):
+    def set_bound(self, row, lower_bound, upper_bound):
         """
         Set bound data to the b and r arrays. Raises an error if row is greater than
         current number of rows.
         """
         if row >= self.b.shape[1]:
             raise ValueError("Can not set bounds for row that does not exist.")
-        self._set_bound(row, lower_bound, bound_range)
+        self._set_bound(row, lower_bound, upper_bound)
 
-    def _set_bound(self, row, lower_bound, bound_range):
+    def _set_bound(self, row, lower_bound, upper_bound):
         """
         Set bound data to the b and r arrays. Do not use this directly, add rows
         using add_row.
         """
         super(GeneralLP, self)._set_bound(row, lower_bound)
-        if row >= self.r.shape[1]:
+        if row >= self.d.shape[1]:
             # New row beyond length of existing array
-            self.r.resize((self.r.shape[0], row+1))
-        self.r[:,row] = bound_range
+            self.d.resize((self.d.shape[0], row+1))
+        self.d[:,row] = upper_bound
 
-    def add_row(self, cols, value, lower_bound, bound_range):
+    def add_row(self, cols, value, lower_bound, upper_bound):
         """
         Add row to the problem.
 
         :param cols: iterable of column indices
         :param value: data for the A matrix for the columns
         :param lower_bound: minimum value for this row
-        :param range: range of the bounds of the row
+        :param upper_bound: maximum of the bounds of the row
         """
+        # Find columns that are new to the sparse matrix
+        new_cols = []
+        for col in cols:
+            if col not in self.A.cols:
+                new_cols.append(col)
         row = self.A.add_row(cols, value)
-        self._set_bound(row, bound_range)
+        self._set_bound(row, lower_bound, upper_bound)
+        # Any new columns must have bounds defined.
+        for col in new_cols:
+            self._set_objective(col, 0.0)
+            self._set_col_bounds(col, )
         return row
 
-    def set_col_bounds(self, col, lower_bound, upper_bound):
+    def set_col_bounds(self, col, lower_bound=0.0, upper_bound=np.inf):
         """
-        Set variable bounds
+        Set column bounds
         """
         if col >= self.l.shape[1]:
             raise ValueError("Can not set bounds for column that does not exist.")
+        if np.any(lower_bound == np.neginf):
+            raise ValueError("Column lower bounds can not be -inf.")
+        self._set_col_bounds(col, lower_bound=lower_bound, upper_bound=upper_bound)
+
+    def _set_col_bounds(self, col, lower_bound=0.0, upper_bound=np.inf):
+        """
+        Set column bounds l & u arrays. Do not use this directly.
+        """
+        if col >= self.l.shape[1]:
+            # New row beyond length of existing array
+            self.l.resize((self.l.shape[0], col+1))
+            self.u.resize((self.u.shape[0], col+1))
         self.l[:, col] = lower_bound
         self.u[: ,col] = upper_bound
 
-    def add_col(self, rows, value, obj):
+    def add_col(self, rows, value, obj, lower_bound=0.0, upper_bound=np.inf):
         """
         Add column to the problem.
 
@@ -485,6 +535,7 @@ class GeneralLP(StandardLP):
         """
         col = self.A.add_col(rows, value)
         self._set_objective(col, obj)
+        self._set_col_bounds(col, lower_bound, upper_bound)
         return col
 
     def to_standard_form(self,):
@@ -494,7 +545,7 @@ class GeneralLP(StandardLP):
         A = self.A.tocsc()
         b = self.b.copy()
         c = self.c.copy()
-        r = self.r.copy()
+        d = self.d.copy()
         l = self.l.copy()
         u = self.u.copy()
         f = self.f
@@ -509,7 +560,7 @@ class GeneralLP(StandardLP):
         #
         #     optimize c^Tx + c^Tl
         #
-        #     s.t. b-Al <= Ax <= b-Al+r
+        #     s.t. b-Al <= Ax <= d-Al
         #             0 <=  x <= u-l
 
         # indices where u is not +inf
@@ -517,14 +568,15 @@ class GeneralLP(StandardLP):
         u[ind] -= l[ind]
 
         b = b - np.squeeze(A.dot(l.T))
+        d = d - np.squeeze(A.dot(l.T))
         f = f + np.squeeze(np.dot(c, l.T))
 
         # Convert equality constraints to a pair of inequalities
         A = vstack([-A, A])  # Double A matrix
 
-        b = np.c_[b, b]
-        b[:,:self.m] *= -1
-        b[:,self.m:] += r
+        b = np.c_[-b, d]
+        #b[:,:self.m] *= -1
+        #b[:,self.m:] += r
 
         # add upper bounds
         nubs = len(ind)
