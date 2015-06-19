@@ -367,7 +367,7 @@ class StandardLP(object):
         :param row: row index
         """
         cols, value = self.A.get_row(row)
-        bound = self.b[row]
+        bound = self.b[:,row]
         return cols, value, bound
 
     def set_objective(self, col, obj):
