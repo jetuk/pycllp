@@ -234,11 +234,9 @@ class TestGeneralLP(object):
         assert_allclose(vals, -slp_vals)
         assert_allclose([2.0], -slp_bound)
 
-        slp_cols, slp_vals, slp_bound = slp.get_row(1)
+        with pytest.raises(IndexError):
+            slp_cols, slp_vals, slp_bound = slp.get_row(1)
 
-        assert_allclose(cols, slp_cols)
-        assert_allclose(vals, slp_vals)
-        assert_allclose([np.inf], slp_bound)
 
 
 class TestVanderbei2_9(object):

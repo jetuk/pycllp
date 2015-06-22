@@ -159,6 +159,13 @@ class SparseMatrix(object):
         value = self.data[:, ind]
         return cols, value
 
+    @property
+    def rows(self, ):
+        """Generator of row data"""
+        for row in range(self.nrows):
+            cols, value = self.get_row(row)
+            yield row, cols, value
+
     def _del_row(self, row):
         """
         Delete a row from the matrix. Use with caution as it can result in gaps
@@ -211,6 +218,24 @@ class SparseMatrix(object):
             else:
                 raise ValueError("Inconsistent data array provided.")
         return col
+
+    def get_col(self, col):
+        """
+        Get col data from the matrix
+
+        :param col: col index
+        """
+        ind = col == self._cols
+        rows = self._rows[ind]
+        value = self.data[:, ind]
+        return rows, value
+
+    @property
+    def cols(self, ):
+        """Generator of col data"""
+        for col in range(self.ncols):
+            rows, value = self.get_col(col)
+            yield col, rows, value
 
     def _del_col(self, col):
         """
@@ -370,6 +395,13 @@ class StandardLP(object):
         bound = self.b[:,row]
         return cols, value, bound
 
+    @property
+    def rows(self, ):
+        """Generator of row data"""
+        for row in range(self.nrows):
+            cols, value, bound = self.get_row(row)
+            yield row, cols, value, bound
+
     def set_objective(self, col, obj):
         """
         Set objective function coefficient to the c array. Raises an error if
@@ -400,6 +432,41 @@ class StandardLP(object):
         col = self.A.add_col(rows, value)
         self._set_objective(col, obj)
         return col
+
+    def get_col(self, col):
+        """
+        Get column data
+
+        :param col: column index
+        """
+        rows, value = self.A.get_col(col)
+        obj = self.c[:, col]
+        return rows, value, obj
+
+    @property
+    def cols(self, ):
+        """Generator of column data"""
+        for col in range(self.ncols):
+            rows, value, obj = self.get_col(col)
+            yield col, rows, value, obj
+
+    def remove_unbounded(self, ):
+        """
+        Return a copy of the StandardLP with all unbounded rows removed.
+        """
+        lp = StandardLP()
+        for row, cols, value, bound in self.rows:
+            if np.all(np.isinf(bound)):
+                # All unbounded, don't add
+                continue
+            elif np.any(np.isinf(bound)):
+                # Some unbounded
+                raise ValueError("Can not remove unbounded rows. Row {} has some unbounded rounds.".format(row))
+            lp.add_row(cols, value, bound)
+
+        for col, rows, value, obj in self.cols:
+            lp._set_objective(col, obj)
+        return lp
 
     def init(self, solver):
         solver.init(self.A, self.b, self.c, self.f)
@@ -608,4 +675,4 @@ class GeneralLP(StandardLP):
 
         lp = StandardLP(SparseMatrix(matrix=A),b,c,f=f)
 
-        return lp
+        return lp.remove_unbounded()
