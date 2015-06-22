@@ -239,3 +239,22 @@ class TestGeneralLP(object):
         assert_allclose(cols, slp_cols)
         assert_allclose(vals, slp_vals)
         assert_allclose([np.inf], slp_bound)
+
+
+class TestVanderbei2_9(object):
+
+    def test_vanderbei_2_9(self, ):
+        from vanderbei_problems import vanderbei_2_9
+        args = list(vanderbei_2_9())
+        args.pop()  # remove xopt
+        lp = GeneralLP(*args)
+        # Test structure
+        lp_cols, lp_vals, lp_lb, lp_ub = lp.get_row(0)
+        assert_allclose([1, 2], lp_cols)
+        assert_allclose([[-2, -3]], lp_vals)
+        assert_allclose([-5], lp_lb)
+        assert_allclose([np.inf], lp_ub)
+
+        slp = lp.to_standard_form()
+
+        slp_cols, slp_vals, slp_bound = slp.get_row(0)

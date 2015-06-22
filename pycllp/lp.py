@@ -504,6 +504,16 @@ class GeneralLP(StandardLP):
             self._set_col_bounds(col, )
         return row
 
+    def get_row(self, row):
+        """
+        Return row data
+
+        :param row: row index
+        """
+        cols, value, lb = StandardLP.get_row(self, row)
+        ub = self.d[:, row]
+        return cols, value, lb, ub
+
     def set_col_bounds(self, col, lower_bound=0.0, upper_bound=np.inf):
         """
         Set column bounds

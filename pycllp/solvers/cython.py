@@ -12,6 +12,7 @@ class CyHSDSolver(BaseCSCSolver):
     def solve(self, verbose=0):
 
         m,n,nlp = self.m,self.n,self.nlp
+        b = np.nan_to_num(self.b)
 
         x = np.empty((nlp,n))
         y = np.empty((nlp,m))
@@ -22,7 +23,7 @@ class CyHSDSolver(BaseCSCSolver):
         for i in range(nlp):
             status[i] = hsd_solver(m, n, self.A.nnz,
                             self.A.indices, self.A.indptr, self.Adata[i,:],
-                            self.b[i,:], self.c[i,:],
+                            b[i,:], self.c[i,:],
                             self.f[i], x[i,:], y[i,:], w[i,:], z[i,:],
                             verbose)
 
