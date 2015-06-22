@@ -31,13 +31,13 @@ class ClHSDSolver(BaseCSCSolver):
         """Setup problem on the cl context
         """
         ctx = self.ctx
-        n = self.A.shape[1]
-        m = self.A.shape[0]
-        nz = self.A.nnz
+        n = int(self.n)
+        m = int(self.m)
+        nz = len(self.Ai)
         nlp = self.nlp
-        kA = self.A.indptr.astype(np.int32)
-        iA = self.A.indices.astype(np.int32)
-        A = self.A.data.astype(np.float32)
+        kA = self.Ak.astype(np.int32)
+        iA = self.Ai.astype(np.int32)
+        A = np.ascontiguousarray(self.A.astype(np.float32)[0,:])
         b = self.b.reshape(np.prod(self.b.shape)).astype(np.float32)
         c= self.c.reshape(np.prod(self.c.shape)).astype(np.float32)
         print (b, c, nlp)
@@ -186,8 +186,8 @@ class ClHSDSolver(BaseCSCSolver):
         gs = (self.global_size,)
         v = np.int32(verbose)
 
-        m = np.int32(self.A.shape[0])
-        n = np.int32(self.A.shape[1])
+        m = np.int32(self.m)
+        n = np.int32(self.n)
         denwin = np.int32(self.denwin)
         c = self.g_c
         b = self.g_b

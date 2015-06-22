@@ -49,8 +49,8 @@ class SparseMatrix(object):
                 self.data = np.reshape(self.data, (1, len(self.data)))
         else:
             # Setup empty matrix
-            self._rows = np.array([])
-            self._cols = np.array([])
+            self._rows = np.array([], dtype=np.int)
+            self._cols = np.array([], dtype=np.int)
             self.data = np.array([[]])
 
     @property
@@ -85,17 +85,18 @@ class SparseMatrix(object):
             is stored in all problems. Otherwise must be an array_like with same
             length as number of problems.
         """
+        v = np.array(value)
         if row < 0 or col < 0:
             raise ValueError("Coordinates (i,j) must be >= 0")
-        if not np.isscalar(value):
-            if len(value) != self.data.shape[0]:
+        if v.ndim == 2:
+            if v.shape[0] != self.data.shape[0]:
                 raise ValueError("The number of coordinate values must match the number of problems.")
 
         # Check for existing entry
         ind = (self._rows==row) & (self._cols==col)
         if ind.sum() == 1:
             # existing entry; overwrite data
-            self.data[:,ind] = value
+            self.data[:,ind] = v
         elif ind.sum() == 0:
             # new entry
             self._rows.resize(self._rows.shape[0]+1)
@@ -103,7 +104,7 @@ class SparseMatrix(object):
             self.data.resize((self.data.shape[0],self.data.shape[1]+1))
             self._rows[-1] = row
             self._cols[-1] = col
-            self.data[:,-1] = value
+            self.data[:,-1] = v
         else:
             raise ValueError("Multiple entries with the same coordinate pair. Bad things have happened!")
 
@@ -267,11 +268,29 @@ class SparseMatrix(object):
             else:
                 raise ValueError("Inconsistent data array provided.")
 
+    def set_num_problems(self, nproblems):
+        """
+        Update the internal number of problems to nproblems. New problems are
+        zero filled.
+        """
+        self.data.resize((nproblems, self.data.shape[1]))
+
     def tocoo(self, problem=0):
         return coo_matrix( (self.data[problem,:], (self._rows, self._cols)) )
 
     def tocsc(self, problem=0):
         return self.tocoo().tocsc()
+
+    def tocsc_arrays(self, ):
+        A = []
+        iA = []
+        kA = [0, ]
+        for col, rows, value in self.cols:
+            for i, row in enumerate(rows):
+                A.append(value[:, i])
+                iA.append(row)
+            kA.append(len(A))
+        return np.array(A).T, np.array(iA, dtype=np.int32), np.array(kA, dtype=np.int32)
 
     def todense(self, problem=0):
         return self.tocoo().todense()
@@ -368,10 +387,15 @@ class StandardLP(object):
         Set bound data to the b array. Do not use this directly, add rows
         using add_row.
         """
+        bnd = np.array(bound)
+        if self.b.shape[1] == 0 and bnd.ndim > 0:
+            # If this is the first row to be added then check for the number
+            # of problems and resize array accordinly.
+            self.set_num_problems(bnd.shape[0])
         if row >= self.b.shape[1]:
             # New row beyond length of existing array
             self.b.resize((self.b.shape[0], row+1))
-        self.b[:,row] = bound
+        self.b[:, row] = bnd
 
     def add_row(self, cols, value, bound):
         """
@@ -449,6 +473,16 @@ class StandardLP(object):
         for col in range(self.ncols):
             rows, value, obj = self.get_col(col)
             yield col, rows, value, obj
+
+    def set_num_problems(self, nproblems):
+        """
+        Update the internal number of problems to nproblems. New problems are
+        zero filled.
+        """
+        self.A.set_num_problems(nproblems)
+        self.b.resize((nproblems, self.b.shape[1]))
+        self.c.resize((nproblems, self.c.shape[1]))
+        self.f.resize(nproblems)
 
     def remove_unbounded(self, ):
         """

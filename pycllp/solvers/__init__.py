@@ -39,8 +39,7 @@ class BaseCSCSolver(BaseSolver):
 
     def init(self, A, b, c, f=0.0):
         BaseSolver.init(self, A, b, c, f=f)
-        self.Adata = self.A.data
-        self.A = self.A.tocsc()
+        self.A, self.Ai, self.Ak = self.A.tocsc_arrays()
 
 # register solvers
 try:
