@@ -35,41 +35,41 @@ class SparseMatrix(object):
         if matrix is not None:
             # Create coordinate structure from data
             tmp = matrix.tocoo()
-            self.rows = tmp.row
-            self.cols = tmp.col
+            self._rows = tmp.row
+            self._cols = tmp.col
             # data reshaped so first dimension is the number of scenarios
             self.data = np.reshape(tmp.data, (1, len(tmp.data)))
         elif data is not None:
             if not len(rows) == len(cols) == len(data):
                 raise ValueError("Arrays rows, cols and data must be the same length.")
-            self.rows = np.array(rows)
-            self.cols = np.array(cols)
+            self._rows = np.array(rows)
+            self._cols = np.array(cols)
             self.data = np.array(data)
             if self.data.ndim == 1: # Ensure data is 2-dimensional
                 self.data = np.reshape(self.data, (1, len(self.data)))
         else:
             # Setup empty matrix
-            self.rows = np.array([])
-            self.cols = np.array([])
+            self._rows = np.array([])
+            self._cols = np.array([])
             self.data = np.array([[]])
 
     @property
     def nrows(self, ):
         try:
-            return self.rows.max() + 1
+            return self._rows.max() + 1
         except ValueError:
             return 0
 
     @property
     def ncols(self, ):
         try:
-            return self.cols.max() + 1
+            return self._cols.max() + 1
         except ValueError:
             return 0
 
     @property
     def nnzeros(self, ):
-        return len(self.rows)
+        return len(self._rows)
 
     @property
     def nproblems(self, ):
@@ -92,17 +92,17 @@ class SparseMatrix(object):
                 raise ValueError("The number of coordinate values must match the number of problems.")
 
         # Check for existing entry
-        ind = (self.rows==row) & (self.cols==col)
+        ind = (self._rows==row) & (self._cols==col)
         if ind.sum() == 1:
             # existing entry; overwrite data
             self.data[:,ind] = value
         elif ind.sum() == 0:
             # new entry
-            self.rows.resize(self.rows.shape[0]+1)
-            self.cols.resize(self.cols.shape[0]+1)
+            self._rows.resize(self._rows.shape[0]+1)
+            self._cols.resize(self._cols.shape[0]+1)
             self.data.resize((self.data.shape[0],self.data.shape[1]+1))
-            self.rows[-1] = row
-            self.cols[-1] = col
+            self._rows[-1] = row
+            self._cols[-1] = col
             self.data[:,-1] = value
         else:
             raise ValueError("Multiple entries with the same coordinate pair. Bad things have happened!")
@@ -116,11 +116,11 @@ class SparseMatrix(object):
         :param row: row coordinate of entry
         :param col: col coordinate of entry
         """
-        ind = (self.rows == row) & (self.cols == col)
+        ind = (self._rows == row) & (self._cols == col)
         if ind.sum() == 1:
             # single entry to remove
-            self.rows = self.rows[np.logical_not(ind)]
-            self.cols = self.cols[np.logical_not(ind)]
+            self._rows = self._rows[np.logical_not(ind)]
+            self._cols = self._cols[np.logical_not(ind)]
             self.data = self.data[:, np.logical_not(ind)]
         else:
             raise ValueError("Multiple entries with the same coordinate pair. Bad things have happened!")
@@ -154,8 +154,8 @@ class SparseMatrix(object):
 
         :param row: row index
         """
-        ind = row == self.rows
-        cols = self.cols[ind]
+        ind = row == self._rows
+        cols = self._cols[ind]
         value = self.data[:, ind]
         return cols, value
 
@@ -165,9 +165,9 @@ class SparseMatrix(object):
         in the matrix.
         """
         # find all coordinates with the row
-        ind = (self.rows == row)
-        self.rows = self.rows[np.logical_not(ind)]
-        self.cols = self.cols[np.logical_not(ind)]
+        ind = (self._rows == row)
+        self._rows = self._rows[np.logical_not(ind)]
+        self._cols = self._cols[np.logical_not(ind)]
         self.data = self.data[:, np.logical_not(ind)]
 
     def update_row(self, row, cols, value):
@@ -218,9 +218,9 @@ class SparseMatrix(object):
         gaps in the matrix.
         """
         # find all coordinates with the row
-        ind = (self.cols == col)
-        self.rows = self.rows[np.logical_not(ind)]
-        self.cols = self.cols[np.logical_not(ind)]
+        ind = (self._cols == col)
+        self._rows = self._rows[np.logical_not(ind)]
+        self._cols = self._cols[np.logical_not(ind)]
         self.data = self.data[:, np.logical_not(ind)]
 
     def update_col(self, col, rows, value):
@@ -243,7 +243,7 @@ class SparseMatrix(object):
                 raise ValueError("Inconsistent data array provided.")
 
     def tocoo(self, problem=0):
-        return coo_matrix( (self.data[problem,:], (self.rows, self.cols)) )
+        return coo_matrix( (self.data[problem,:], (self._rows, self._cols)) )
 
     def tocsc(self, problem=0):
         return self.tocoo().tocsc()
@@ -494,7 +494,7 @@ class GeneralLP(StandardLP):
         # Find columns that are new to the sparse matrix
         new_cols = []
         for col in cols:
-            if col not in self.A.cols:
+            if col not in self.A._cols:
                 new_cols.append(col)
         row = self.A.add_row(cols, value)
         self._set_bound(row, lower_bound, upper_bound)
