@@ -33,7 +33,7 @@ def pytest_solver(name, solver_cls, solver_args, problem_func):
 
     np.testing.assert_equal(solver.status, 0)
     np.testing.assert_almost_equal(np.squeeze(solver.x), xopt,
-                                   decimal=5)
+                                   decimal=2)
 
 
 @pytest.mark.parametrize("device,name,solver_cls,problem_func",
@@ -62,4 +62,4 @@ def test_cl_solvers_parallel(device, name, solver_cls, problem_func):
     np.testing.assert_almost_equal(solver.status, pysolver.status,)
     np.testing.assert_almost_equal(
                 solver.x,
-                pysolver.x, decimal=4)
+                pysolver.x, decimal=2)

@@ -5,7 +5,7 @@
 #define	FALSE 0
 
 
-#define _EPS 1.0e-6
+#define _EPS 1.0e-8
 #define _EPSSOL 1.0e-6  /* Zero tolerance for consistent eqns w/dep rows */
 #define _EPSNUM 0.0     /* Initial zero tolerance for dependent rows */
 #define _EPSCDN 1.0e-12 /* Zero tolerance for ill-conditioning test */
@@ -448,7 +448,7 @@ void forwardbackward(
 
 	    /* --- for tuning purposes --- */
       #if __OPENCL_C_VERSION__ >= CL_VERSION_1_2
-      if (verbose>0 && pass>0) {
+      if (verbose>2 && pass>0) {
         maxv_l(s,n,&temp1);
         maxv_l(r,m,&temp2);
 		    printf("refinement(%3d): %8.2e %8.2e %8.2e \n",

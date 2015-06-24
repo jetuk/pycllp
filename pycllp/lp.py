@@ -99,9 +99,12 @@ class SparseMatrix(object):
             self.data[:,ind] = v
         elif ind.sum() == 0:
             # new entry
-            self._rows.resize(self._rows.shape[0]+1)
-            self._cols.resize(self._cols.shape[0]+1)
-            self.data.resize((self.data.shape[0],self.data.shape[1]+1))
+            self._rows = np.pad(self._rows, (0, 1), mode='constant')
+            self._cols = np.pad(self._cols, (0, 1), mode='constant')
+            self.data = np.pad(self.data, ((0, 0), (0, 1)), mode='constant')
+            #self._rows.resize(self._rows.shape[0]+1)
+            #self._cols.resize(self._cols.shape[0]+1)
+            #self.data.resize((self.data.shape[0],self.data.shape[1]+1))
             self._rows[-1] = row
             self._cols[-1] = col
             self.data[:,-1] = v
@@ -273,7 +276,9 @@ class SparseMatrix(object):
         Update the internal number of problems to nproblems. New problems are
         zero filled.
         """
-        self.data.resize((nproblems, self.data.shape[1]))
+        N = nproblems - self.data.shape[0]
+        self.data = np.pad(self.data, ((0, N), (0, 0)), mode='constant')
+        #self.data.resize((nproblems, self.data.shape[1]))
 
     def tocoo(self, problem=0):
         return coo_matrix( (self.data[problem,:], (self._rows, self._cols)) )
@@ -290,7 +295,8 @@ class SparseMatrix(object):
                 A.append(value[:, i])
                 iA.append(row)
             kA.append(len(A))
-        return np.array(A).T, np.array(iA, dtype=np.int32), np.array(kA, dtype=np.int32)
+        A = np.ascontiguousarray(np.array(A).T)
+        return A, np.array(iA, dtype=np.int32), np.array(kA, dtype=np.int32)
 
     def todense(self, problem=0):
         return self.tocoo().todense()
@@ -330,11 +336,15 @@ class StandardLP(object):
 
             self.b = np.array(b)
             if self.b.ndim == 1:
-                self.b =  np.array(np.dot(np.ones((nprb,1)),np.matrix(self.b)))
+                self.b = np.array(np.dot(np.ones((nprb, 1)), np.matrix(self.b)))
+            if self.b.shape[0] != nprb:
+                raise ValueError("A matrix and b array do not have the same number of problems.")
 
             self.c = np.array(c)
             if self.c.ndim == 1:
-                self.c =  np.array(np.dot(np.ones((nprb,1)),np.matrix(self.c)))
+                self.c = np.array(np.dot(np.ones((nprb, 1)), np.matrix(self.c)))
+            if self.c.shape[0] != nprb:
+                raise ValueError("A matrix and c array do not have the same number of problems.")
 
             if np.isscalar(f):
                 self.f = np.ones(nprb)*f
@@ -345,7 +355,7 @@ class StandardLP(object):
             self.A = SparseMatrix()
             self.b = np.array([[]])
             self.c = np.array([[]])
-            self.f = np.array([])
+            self.f = np.array([0.0, ])
 
     @property
     def nrows(self, ):
@@ -394,7 +404,9 @@ class StandardLP(object):
             self.set_num_problems(bnd.shape[0])
         if row >= self.b.shape[1]:
             # New row beyond length of existing array
-            self.b.resize((self.b.shape[0], row+1))
+            N = row - self.b.shape[1] + 1
+            self.b = np.pad(self.b, ((0, 0), (0, N)), mode='constant')
+            #self.b.resize((self.b.shape[0], row+1))
         self.b[:, row] = bnd
 
     def add_row(self, cols, value, bound):
@@ -442,7 +454,9 @@ class StandardLP(object):
         """
         if col >= self.c.shape[1]:
             # New row beyond length of existing array
-            self.c.resize((self.c.shape[0], col+1))
+            N = col - self.c.shape[1] + 1
+            self.c = np.pad(self.c, ((0, 0), (0, N)), mode='constant')
+            #self.c.resize((self.c.shape[0], col+1))
         self.c[:,col] = obj
 
     def add_col(self, rows, value, obj):
@@ -480,16 +494,22 @@ class StandardLP(object):
         zero filled.
         """
         self.A.set_num_problems(nproblems)
-        self.b.resize((nproblems, self.b.shape[1]))
-        self.c.resize((nproblems, self.c.shape[1]))
-        self.f.resize(nproblems)
+        N = nproblems - self.b.shape[0]
+        self.b = np.pad(self.b, ((0, N), (0, 0)), mode='constant')
+        self.c = np.pad(self.c, ((0, N), (0, 0)), mode='constant')
+        self.f = np.pad(self.f, (0, N), mode='constant')
+        #self.b.resize((nproblems, self.b.shape[1]))
+        #self.c.resize((nproblems, self.c.shape[1]))
+        #self.f.resize(nproblems)
 
     def remove_unbounded(self, ):
         """
         Return a copy of the StandardLP with all unbounded rows removed.
         """
         lp = StandardLP()
+        lp.set_num_problems(self.nproblems)
         for row, cols, value, bound in self.rows:
+            print(row, cols, value, bound.shape, bound)
             if np.all(np.isinf(bound)):
                 # All unbounded, don't add
                 continue
@@ -500,6 +520,7 @@ class StandardLP(object):
 
         for col, rows, value, obj in self.cols:
             lp._set_objective(col, obj)
+        lp.f = self.f.copy()
         return lp
 
     def init(self, solver):
@@ -580,7 +601,9 @@ class GeneralLP(StandardLP):
         super(GeneralLP, self)._set_bound(row, lower_bound)
         if row >= self.d.shape[1]:
             # New row beyond length of existing array
-            self.d.resize((self.d.shape[0], row+1))
+            N = row - self.d.shape[1] + 1
+            self.d = np.pad(self.d, ((0, 0), (0, N)), mode='constant')
+            #self.d.resize((self.d.shape[0], row+1))
         self.d[:,row] = upper_bound
 
     def add_row(self, cols, value, lower_bound, upper_bound):
@@ -631,8 +654,11 @@ class GeneralLP(StandardLP):
         """
         if col >= self.l.shape[1]:
             # New row beyond length of existing array
-            self.l.resize((self.l.shape[0], col+1))
-            self.u.resize((self.u.shape[0], col+1))
+            N = col - self.l.shape[1] + 1
+            self.l = np.pad(self.l, ((0, 0), (0, N)), mode='constant')
+            self.u = np.pad(self.u, ((0, 0), (0, N)), mode='constant')
+            #self.l.resize((self.l.shape[0], col+1))
+            #self.u.resize((self.u.shape[0], col+1))
         self.l[:, col] = lower_bound
         self.u[: ,col] = upper_bound
 
@@ -653,13 +679,13 @@ class GeneralLP(StandardLP):
         """
         Return an instance of StandardLP by factoring this problem.
         """
-        A = self.A.tocsc()
+
         b = self.b.copy()
         c = self.c.copy()
         d = self.d.copy()
         l = self.l.copy()
         u = self.u.copy()
-        f = self.f
+        f = self.f.copy()
 
         # abort if lower bound equals -Infinity
         if np.isneginf(self.l).any():
@@ -677,13 +703,21 @@ class GeneralLP(StandardLP):
         # indices where u is not +inf
         ind = np.where(np.isposinf(u)==False)[0]
         u[ind] -= l[ind]
-
-        b = b - np.squeeze(A.dot(l.T))
-        d = d - np.squeeze(A.dot(l.T))
-        f = f + np.squeeze(np.dot(c, l.T))
+        for iprb in range(self.nproblems):
+            Al = np.squeeze(self.A.tocsc(iprb).dot(l[iprb, :].T))
+            b[iprb, :] = b[iprb, :] - Al
+            d[iprb, :] = d[iprb, :] - Al
+            f[iprb] = f[iprb] + np.squeeze(np.dot(c[iprb, :], l[iprb, :].T))
 
         # Convert equality constraints to a pair of inequalities
-        A = vstack([-A, A])  # Double A matrix
+        # Create A matrix has a double copy of self.A
+        # first with -ve coefficients, and then as is
+        A = SparseMatrix()
+        A.set_num_problems(self.nproblems)
+        for row, cols, value in self.A.rows:
+            A.add_row(cols, -value)
+        for row, cols, value in self.A.rows:
+            A.add_row(cols, value)
 
         b = np.c_[-b, d]
         #b[:,:self.m] *= -1
@@ -705,8 +739,8 @@ class GeneralLP(StandardLP):
         #        x <=  u-l
         #        x >=  0
 
-        assert A.shape[0] == b.shape[1]
+        #assert A.shape[0] == b.shape[1]
 
-        lp = StandardLP(SparseMatrix(matrix=A),b,c,f=f)
+        lp = StandardLP(A, b, c, f=f)
 
         return lp.remove_unbounded()
