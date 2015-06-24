@@ -35,11 +35,23 @@ def pytest_solver(name, solver_cls, solver_args, problem_func):
     np.testing.assert_almost_equal(np.squeeze(solver.x), xopt,
                                    decimal=2)
 
+@pytest.mark.noncl
+@pytest.mark.parametrize("name,solver_cls,problem_name,problem_func",
+    [(n, s, pn, pf) for (n, s), (pn, pf) in product(non_cl_solvers,all_problems)])
+def test_noncl_solvers(name, solver_cls, problem_name, problem_func):
+    pytest_solver_parallel(name, solver_cls, [], problem_func)                                   
+
 
 @pytest.mark.parametrize("device,name,solver_cls,problem_func",
                          [(d, n, s, pf) for d, (n, s), (pn, pf) in
                           product(devices, cl_solvers, all_problems)])
 def test_cl_solvers_parallel(device, name, solver_cls, problem_func):
+    ctx = cl.Context(devices=[device])
+    queue = cl.CommandQueue(ctx)
+    pytest_solver_parallel(name, solver_cls, [ctx, queue], problem_func)
+
+
+def pytest_solver_parallel(name, solver_cls, solver_args, problem_func):
     from pycllp.lp import GeneralLP
     from pycllp.solvers import solver_registry
 
@@ -48,18 +60,15 @@ def test_cl_solvers_parallel(device, name, solver_cls, problem_func):
     lp = GeneralLP(*args)
     slp = lp.to_standard_form()
 
-    ctx = cl.Context(devices=[device])
-    queue = cl.CommandQueue(ctx)
-
-    solver = solver_cls(ctx, queue)
+    solver = solver_cls(*solver_args)
     slp.init(solver)
-    slp.solve(solver, verbose=2)
+    slp.solve(solver, verbose=0)
 
     pysolver = solver_registry['cyhsd']()
     slp.init(pysolver)
-    slp.solve(pysolver, verbose=2)
-
+    slp.solve(pysolver, verbose=0)
+    ind = np.where(solver.status >= 0)
     np.testing.assert_almost_equal(solver.status, pysolver.status,)
     np.testing.assert_almost_equal(
-                solver.x,
-                pysolver.x, decimal=2)
+                solver.x[ind, :],
+                pysolver.x[ind, :], decimal=2)

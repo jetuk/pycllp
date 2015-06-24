@@ -20,14 +20,18 @@ MAX_ITER = 200
 
 class HSDSolver(BaseSolver):
     name = 'hsd'
+    def __init__(self, fdtype=np.float64, idtype=np.int64):
+        super(HSDSolver, self).__init__()
+        self.fdtype = fdtype
+        self.idtype = idtype
 
     def init(self, A, b, c, f=0.0):
         BaseSolver.init(self, A, b, c, f=f)
 
     def solve(self, verbose=0):
         n,nlp = self.n,self.nlp
-        self.x = np.empty((nlp,n))
-        self.status = np.empty(nlp, dtype=np.int)
+        self.x = np.empty((nlp, n), dtype=self.fdtype)
+        self.status = np.empty(nlp, dtype=self.idtype)
 
         for i in range(nlp):
             self._solve(i, verbose=verbose)
@@ -39,12 +43,12 @@ class HSDSolver(BaseSolver):
         m = self.m
         Acsc = self.A.tocsc(problem=ilp)
         nz = Acsc.nnz
-        A = Acsc.data
+        A = Acsc.data.astype(self.fdtype)
         iA = Acsc.indices
         kA = Acsc.indptr
-        b = self.b[ilp,:]
-        c= self.c[ilp,:]
-        f=self.f[ilp]
+        b = self.b[ilp,:].astype(self.fdtype)
+        c= self.c[ilp,:].astype(self.fdtype)
+        f=self.f[ilp].astype(self.fdtype)
 
         phi, psi, dphi, dpsi = 0.0, 0.0, 0.0, 0.0
         normr, norms = 0.0, 0.0  # infeasibilites
@@ -56,34 +60,34 @@ class HSDSolver(BaseSolver):
         # Allocate memory for arrays.
 
         # Step direction
-        dx = np.zeros(n)
-        dw = np.zeros(m)
-        dy = np.zeros(m)
-        dz = np.zeros(n)
+        dx = np.zeros(n, dtype=self.fdtype)
+        dw = np.zeros(m, dtype=self.fdtype)
+        dy = np.zeros(m, dtype=self.fdtype)
+        dz = np.zeros(n, dtype=self.fdtype)
         # infeasibilites
-        rho = np.zeros(m)
-        sigma = np.zeros(n)
+        rho = np.zeros(m, dtype=self.fdtype)
+        sigma = np.zeros(n, dtype=self.fdtype)
         # Diagonal matrixes
-        D = np.zeros(n)
-        E = np.zeros(m)
+        D = np.zeros(n, dtype=self.fdtype)
+        E = np.zeros(m, dtype=self.fdtype)
 
-        fx = np.zeros(n)
-        fy = np.zeros(m)
-        gx = np.zeros(n)
-        gy = np.zeros(m)
+        fx = np.zeros(n, dtype=self.fdtype)
+        fy = np.zeros(m, dtype=self.fdtype)
+        gx = np.zeros(n, dtype=self.fdtype)
+        gy = np.zeros(m, dtype=self.fdtype)
 
         # arrays for A^T
-        At = np.zeros(nz)
-        iAt = np.zeros(nz, dtype=np.int)
-        kAt = np.zeros(m+1, dtype=np.int)
+        At = np.zeros(nz, dtype=self.fdtype)
+        iAt = np.zeros(nz, dtype=self.idtype)
+        kAt = np.zeros(m+1, dtype=self.idtype)
 
 
         #  Initialization.
 
-        x = np.ones(n)
-        z = np.ones(n)
-        w = np.ones(m)
-        y = np.ones(m)
+        x = np.ones(n, dtype=self.fdtype)
+        z = np.ones(n, dtype=self.fdtype)
+        w = np.ones(m, dtype=self.fdtype)
+        y = np.ones(m, dtype=self.fdtype)
 
         phi = 1.0
         psi = 1.0
@@ -220,7 +224,10 @@ class HSDSolver(BaseSolver):
                 theta = -dphi/phi
             if (theta < -dpsi/psi):
                 theta = -dpsi/psi
-            theta = min( 0.95/theta, 1.0 )
+            try:
+                theta = min( 0.95/theta, 1.0 )
+            except ZeroDivisionError:
+                theta = 1.0
 
         	# STEP 6: Step to new point
 

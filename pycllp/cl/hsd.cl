@@ -2,7 +2,7 @@
 #include <linalg.h>
 #include <ldlt.h>
 
-#define EPS 1.0e-12
+#define EPS 1.0e-6
 #define MAX_ITER 200
 
 __kernel void hsd(
