@@ -161,8 +161,8 @@ class ClHSDSolver(BaseCSCSolver):
         self.kQ = ldltfac.kQ.astype(np.int32)
         self.g_kQ = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
                                 hostbuf=self.kQ)
-
-        print('Creating OpenCL program...')
+        if verbose > 0:
+            print('Creating OpenCL program...')
         path = os.path.dirname(__file__)
         path = os.path.join(path, '..','cl')
         build_opts = ['-I '+path, ]#'-cl-single-precision-constant',
@@ -215,7 +215,8 @@ class ClHSDSolver(BaseCSCSolver):
         fwork = self.l_fwork
         iwork = self.l_iwork
         status = self.g_status
-        print('Executing kernel...')
+        if verbose > 0:
+            print('Executing kernel...')
         self.cl_prg.hsd(
             queue,
             gs,
