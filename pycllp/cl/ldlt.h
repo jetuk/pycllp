@@ -1,6 +1,6 @@
 void inv_num(
-  int m, int n, float _max, int denwin, int* ndep,
-  __local float* diag,
+  int m, int n, int lnz, float _max, int denwin, int* ndep,
+  __global float* gdiag,
   __global float* perm,
   __global int* iperm,
   __global float* A,
@@ -9,7 +9,7 @@ void inv_num(
   __global float* At,
   __global int* iAt,
   __global int* kAt,
-  __local float* AAt,
+  __global float* AAt,
   __global int* iAAt,
   __global int* kAAt,
   //__global float* Q,
@@ -22,8 +22,8 @@ void inv_num(
   __local int* mark
 );
 void lltnum(
-  int m, int n, float _max,  int denwin, int* ndep,
-  __local float* diag,
+  int m, int n, int lnz, float _max,  int denwin, int* ndep,
+  __global float* gdiag,
   __global float* perm,
   __global int* iperm,
   __global float* A,
@@ -32,7 +32,7 @@ void lltnum(
   __global float* At,
   __global int* iAt,
   __global int* kAt,
-  __local float* AAt,
+  __global float* AAt,
   __global int* iAAt,
   __global int* kAAt,
   //__global float* Q,
@@ -45,8 +45,8 @@ void lltnum(
   __local int* mark
 );
 void forwardbackward(
-  int m, int n, int _max, int* ndep,
-  __local float* diag,
+  int m, int n, int lnz, int _max, int* ndep,
+  __global float* gdiag,
   __global int* iperm,
   __global float* A,
   __global int* iA,
@@ -54,7 +54,7 @@ void forwardbackward(
   __global float* At,
   __global int* iAt,
   __global int* kAt,
-  __local float* AAt,
+  __global float* AAt,
   __global int* iAAt,
   __global int* kAAt,
   //__global float* Q,

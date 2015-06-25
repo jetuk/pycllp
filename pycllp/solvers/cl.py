@@ -47,8 +47,8 @@ class ClHSDSolver(BaseCSCSolver):
         # Allocate local work memory for arrays
         fsize = np.float32().nbytes
         isize = np.int32().nbytes
-        self.l_fwork = cl.LocalMemory(fsize*(12*n+12*m))
-        self.l_iwork = cl.LocalMemory(isize*(4*n+4*m))
+        self.l_fwork = cl.LocalMemory(fsize*(9*n+10*m))
+        self.l_iwork = cl.LocalMemory(isize*(3*n+3*m))
 
         # arrays for A^T
         At = np.zeros(nz,dtype=np.float32)
@@ -125,9 +125,8 @@ class ClHSDSolver(BaseCSCSolver):
         # Must convert to correct dtypes first
 
         self.diag = ldltfac.diag.astype(np.float32)
-        #self.g_diag = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
-        #                        hostbuf=self.diag)
-        self.l_diag = cl.LocalMemory(self.diag.nbytes)
+        self.diag = np.zeros(self.diag.shape[0]*nlp, dtype=np.float32)
+        self.g_diag = cl.Buffer(ctx, mf.READ_WRITE, self.diag.nbytes)
 
         self.perm = ldltfac.perm.astype(np.int32)
         self.g_perm = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
@@ -138,9 +137,10 @@ class ClHSDSolver(BaseCSCSolver):
                                  hostbuf=self.iperm)
 
         self.AAt = ldltfac.AAt.astype(np.float32)
-        #self.g_AAt = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR,
-        #                       hostbuf=self.AAt)
-        self.l_AAt = cl.LocalMemory(self.AAt.nbytes)
+        self.lnz = self.AAt.shape[0]
+        self.AAt = np.zeros(self.AAt.shape[0]*nlp, dtype=np.float32)
+        self.g_AAt = cl.Buffer(ctx, mf.READ_WRITE, self.AAt.nbytes)
+        #self.l_AAt = cl.LocalMemory(self.AAt.nbytes)
 
         self.iAAt = ldltfac.iAAt.astype(np.int32)
         self.g_iAAt = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
@@ -186,6 +186,7 @@ class ClHSDSolver(BaseCSCSolver):
 
         m = np.int32(self.m)
         n = np.int32(self.n)
+        lnz = np.int32(self.lnz)
         denwin = np.int32(self.denwin)
         c = self.g_c
         b = self.g_b
@@ -200,14 +201,14 @@ class ClHSDSolver(BaseCSCSolver):
         At = self.g_At
         iAt = self.g_iAt
         kAt = self.g_kAt
-        AAt = self.l_AAt
+        AAt = self.g_AAt
         iAAt = self.g_iAAt
         kAAt = self.g_kAAt
         #Q = self.g_Q
         #iQ = self.g_iQ
         #kQ = self.g_kQ
 
-        diag = self.l_diag
+        diag = self.g_diag
         perm = self.g_perm
         iperm = self.g_iperm
 
@@ -219,7 +220,7 @@ class ClHSDSolver(BaseCSCSolver):
             queue,
             gs,
             ls,
-            m,n,denwin,c,b,x,z,y,w,diag,perm,iperm,
+            m,n,lnz,denwin,c,b,x,z,y,w,diag,perm,iperm,
             A,iA,kA,At,iAt,kAt,AAt,iAAt,kAAt,#Q,iQ,kQ,
             fwork,iwork,status,v
         )

@@ -20,8 +20,8 @@
 #define _DUAL 2
 
 void lltnum(
-  int m, int n, float _max,  int denwin, int* ndep,
-  __local float* diag,
+  int m, int n, int lnz, float _max,  int denwin, int* ndep,
+  __global float* diag,
   __global float* perm,
   __global int* iperm,
   __global float* A,
@@ -30,7 +30,7 @@ void lltnum(
   __global float* At,
   __global int* iAt,
   __global int* kAt,
-  __local float* AAt,
+  __global float* AAt,
   __global int* iAAt,
   __global int* kAAt,
   //__global float* Q,
@@ -56,6 +56,8 @@ void lltnum(
   __local int *first = iwork;
   __local int *link = iwork+m2;
   int wgid = get_group_id(0);
+  int d0 = wgid*m2;
+  int a0 = wgid*lnz;
 
         /*------------------------------------------------------+
         |                                                       |
@@ -81,7 +83,7 @@ void lltnum(
         }
 
         for (i=0; i<m2; i++) {
-                if (fabs(diag[i]) > maxdiag) maxdiag = fabs(diag[i]);
+                if (fabs(diag[d0+i]) > maxdiag) maxdiag = fabs(diag[d0+i]);
         }
 
         (*ndep)=0;
@@ -92,13 +94,13 @@ void lltnum(
         | of LLt factorization.                                */
 
         for (i=0; i<m2; i++) {
-          diagi = diag[i];
+          diagi = diag[d0+i];
 	        sgn_diagi = perm[i] < n ? -1 : 1;
             for (j=link[i]; j != -1; j=newj) {
                 newj = link[j];
                 k = first[j];
-                lij = AAt[k];
-                lij_dj = lij*diag[j];
+                lij = AAt[a0+k];
+                lij_dj = lij*diag[d0+j];
                 diagi -= lij*lij_dj;
                 k_bgn = k+1;
                 k_end = kAAt[j+1];
@@ -109,12 +111,12 @@ void lltnum(
                     link[row] = j;
                     if (j < denwin) {
                         for (kk=k_bgn; kk<k_end; kk++)
-                            temp[iAAt[kk]] += lij_dj*AAt[kk];
+                            temp[iAAt[kk]] += lij_dj*AAt[a0+kk];
                     } else {
                         int ptr;
                         ptr = row;
                         for (kk=k_bgn; kk<k_end; kk++) {
-                            temp[ptr] += lij_dj*AAt[kk];
+                            temp[ptr] += lij_dj*AAt[a0+kk];
                             ptr++;
                         }
                     }
@@ -124,7 +126,7 @@ void lltnum(
             k_end = kAAt[i+1];
             for (kk=k_bgn; kk<k_end; kk++) {
                 row = iAAt[kk];
-		            AAt[kk] -= temp[row];
+		            AAt[a0+kk] -= temp[row];
             }
             if (fabs(diagi) <= epsnum*maxdiag || mark[i] == FALSE) {
 	    /*
@@ -133,7 +135,7 @@ void lltnum(
                 (*ndep)++;
 		maxoffdiag = 0.0;
                 for (kk=k_bgn; kk<k_end; kk++) {
-		    maxoffdiag = fmax( maxoffdiag, fabs( AAt[kk] ) );
+		    maxoffdiag = fmax( maxoffdiag, fabs( AAt[a0+kk] ) );
                 }
 		if ( maxoffdiag < 1.0e+6*eps ) {
 		    mark[i] = FALSE;
@@ -141,7 +143,7 @@ void lltnum(
 		    diagi = sgn_diagi * eps;
 		}
             }
-	    diag[i] = diagi;
+	    diag[d0+i] = diagi;
             if (k_bgn < k_end) {
                 first[i] = k_bgn;
                 row = iAAt[k_bgn];
@@ -150,9 +152,9 @@ void lltnum(
                 for (kk=k_bgn; kk<k_end; kk++) {
                     row = iAAt[kk];
                     if (mark[i]) {
-                            AAt[kk] /= diagi;
+                            AAt[a0+kk] /= diagi;
                     } else {
-                            AAt[kk] = 0.0;
+                            AAt[a0+kk] = 0.0;
 		    }
                     temp[row] = 0.0;
                 }
@@ -162,8 +164,8 @@ void lltnum(
 }
 
 void inv_num(
-  int m, int n, float _max, int denwin, int* ndep,
-  __local float* diag,
+  int m, int n, int lnz, float _max, int denwin, int* ndep,
+  __global float* diag,
   __global float* perm,
   __global int* iperm,
   __global float* At,
@@ -172,7 +174,7 @@ void inv_num(
   __global float* A,
   __global int* iA,
   __global int* kA,
-  __local float* AAt,
+  __global float* AAt,
   __global int* iAAt,
   __global int* kAAt,
   //__global float* Q,
@@ -186,17 +188,20 @@ void inv_num(
   ) {
 
 
-  int i, j, k;
+  int i, j, k, m2;
   int row, col;
   float epsdiag = _EPSDIAG;
+  m2 = m+n;
   int wgid = get_group_id(0);
+  int d0 = wgid*m2;
+  int a0 = wgid*lnz;
 
   /*----------------------------------------------+
   | Store the diagonal of K in diag[].            |
   |                                              */
 
-  for (j=0; j<n; j++) { diag[iperm[j]]   = -fmax(dn[j],epsdiag); }
-  for (i=0; i<m; i++) { diag[iperm[n+i]] =  fmax(dm[i],epsdiag); }
+  for (j=0; j<n; j++) { diag[d0+iperm[j]]   = -fmax(dn[j],epsdiag); }
+  for (i=0; i<m; i++) { diag[d0+iperm[n+i]] =  fmax(dm[i],epsdiag); }
 
   /*----------------------------------------------+
   | Store lower triangle of permutation of K      |
@@ -207,13 +212,13 @@ void inv_num(
           col = iperm[j];                 /* col is a new_index */
           for (k=kAAt[col]; k<kAAt[col+1]; k++) {
                   iwork[iAAt[k]] = k;
-                  AAt[k] = 0.0;
+                  AAt[a0+k] = 0.0;
           }
 
           for (k=kA[j]; k<kA[j+1]; k++) {
                   row = iperm[n+iA[k]];   /* row is a new_index */
                   if (row > col) {
-                    AAt[iwork[row]] = A[k];
+                    AAt[a0+iwork[row]] = A[k];
                   }
           }
           /*
@@ -229,14 +234,14 @@ void inv_num(
           col = iperm[n+i];
           for (k=kAAt[col]; k<kAAt[col+1]; k++) {
                   iwork[iAAt[k]] = k;
-                  AAt[k] = 0.0;
+                  AAt[a0+k] = 0.0;
 
           }
 
           for (k=kAt[i]; k<kAt[i+1]; k++) {
                   row = iperm[iAt[k]];
                   if (row > col) {
-                    AAt[iwork[row]] = At[k];
+                    AAt[a0+iwork[row]] = At[k];
                   }
           }
   }
@@ -251,7 +256,7 @@ void inv_num(
 
   for (i=0; i<m+n; i++) mark[i] = TRUE;
 
-  lltnum(m, n, _max, denwin, ndep, diag, perm, iperm,
+  lltnum(m, n, lnz, _max, denwin, ndep, diag, perm, iperm,
     A, iA, kA, At, iAt, kAt, AAt, iAAt, kAAt, //Q, iQ, kQ,
     dn, dm, fwork, iwork, mark
     );
@@ -265,9 +270,9 @@ void inv_num(
 | factorization.                               */
 
 void rawsolve(
-	int m, int n, int* ndep,
-  __local float* diag,
-  __local float* AAt,
+	int m, int n, int lnz, int* ndep,
+  __global float* diag,
+  __global float* AAt,
   __global int* iAAt,
   __global int* kAAt,
 	__local float* z,
@@ -277,11 +282,15 @@ void rawsolve(
 {
   int i;
   int m2, k, row;
+  m2 = m+n;
   float eps = 0.0;
 	float beta;
   float epssol = _EPSSOL;
+  int wgid = get_group_id(0);
+  int d0 = wgid*m2;
+  int a0 = wgid*lnz;
   consistent = TRUE;
-  m2 = m+n;
+
 
   if ((*ndep)) {
     maxv_l(z,m,&eps);
@@ -299,7 +308,7 @@ void rawsolve(
       beta = z[i];
       for (k=kAAt[i]; k<kAAt[i+1]; k++) {
         row = iAAt[k];
-        z[row] -= AAt[k]*beta;
+        z[row] -= AAt[a0+k]*beta;
       }
     } else if ( fabs(z[i]) > eps ) {
       consistent = FALSE;
@@ -316,7 +325,7 @@ void rawsolve(
 
   for (i=m2-1; i>=0; i--) {
     if (mark[i]) {
-      z[i] = z[i]/diag[i];
+      z[i] = z[i]/diag[d0+i];
     } else if ( fabs(z[i]) > eps ) {
       consistent = FALSE;
     } else {
@@ -334,7 +343,7 @@ void rawsolve(
     if (mark[i]) {
       beta = z[i];
       for (k=kAAt[i]; k<kAAt[i+1]; k++) {
-        beta -= AAt[k]*z[iAAt[k]];
+        beta -= AAt[a0+k]*z[iAAt[k]];
       }
       z[i] = beta;
     } else if ( fabs(z[i]) > eps ) {
@@ -355,8 +364,8 @@ void rawsolve(
 | factorization.                               */
 
 void forwardbackward(
-  int m, int n, int _max, int* ndep,
-  __local float* diag,
+  int m, int n, int lnz, int _max, int* ndep,
+  __global float* diag,
   __global int* iperm,
   __global float* At,
   __global int* iAt,
@@ -364,7 +373,7 @@ void forwardbackward(
   __global float* A,
   __global int* iA,
   __global int* kA,
-  __local float* AAt,
+  __global float* AAt,
   __global int* iAAt,
   __global int* kAAt,
   //__global float* Q,
@@ -385,6 +394,9 @@ void forwardbackward(
 	float maxrs, oldmaxrs, maxbc;
   float temp1, temp2;
   __local float *x_k, *y_k, *r, *s, *z;//, *Qx;
+  int wgid = get_group_id(0);
+  int d0 = wgid*m2;
+  int a0 = wgid*lnz;
   consistent = TRUE;
 
   y_k = fwork; // length m
@@ -414,7 +426,7 @@ void forwardbackward(
                 for (i=0; i<m; i++) z[iperm[n+i]] = r[i];
 	    }
 
-	    rawsolve(m,n,ndep,diag,AAt,iAAt,kAAt,z,mark,consistent);
+	    rawsolve(m,n,lnz,ndep,diag,AAt,iAAt,kAAt,z,mark,consistent);
 
 	    if (pass == 0) {
                 for (j=0; j<n; j++) {

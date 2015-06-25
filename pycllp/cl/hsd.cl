@@ -6,14 +6,14 @@
 #define MAX_ITER 200
 
 __kernel void hsd(
-  int m, int n, int denwin,
+  int m, int n, int lnz, int denwin,
   __global float* c,
   __global float* b,
   __global float* x,
   __global float* z,
   __global float* y,
   __global float* w,
-  __local float* diag,
+  __global float* diag,
   __global float* perm,
   __global int* iperm,
   __global float* A,
@@ -22,7 +22,7 @@ __kernel void hsd(
   __global float* At,
   __global int* iAt,
   __global int* kAt,
-  __local float* AAt,
+  __global float* AAt,
   __global int* iAAt,
   __global int* kAAt,
   //__global float* Q,
@@ -192,7 +192,7 @@ __kernel void hsd(
       for (j=0; j<n; j++) { D[j] = z[n0+j]/x[n0+j]; }
       for (i=0; i<m; i++) { E[i] = w[m0+i]/y[m0+i]; }
 
-      inv_num(n, m, _max, denwin, &ndep,
+      inv_num(n, m, lnz, _max, denwin, &ndep,
         diag, perm, iperm, A, iA, kA, At, iAt, kAt,
         AAt, iAAt, kAAt, //Q, iQ, kQ,
         E, D, _fwork, _iwork, mark);
@@ -200,7 +200,7 @@ __kernel void hsd(
       for (j=0; j<n; j++) { fx[j] = -sigma[j]; }
       for (i=0; i<m; i++) { fy[i] =  rho[i]; }
 
-      forwardbackward(n, m, _max, &ndep, diag, iperm, A, iA, kA, At, iAt, kAt,
+      forwardbackward(n, m, lnz, _max, &ndep, diag, iperm, A, iA, kA, At, iAt, kAt,
       AAt, iAAt, kAAt, //Q, iQ, kQ,
       mark,
       E, D, fy, fx, _fwork, consistent, verbose
@@ -209,7 +209,7 @@ __kernel void hsd(
       for (j=0; j<n; j++) { gx[j] = -c[n0+j]; }
       for (i=0; i<m; i++) { gy[i] = -b[m0+i]; }
 
-      forwardbackward(n, m, _max, &ndep, diag, iperm, A, iA, kA, At, iAt, kAt,
+      forwardbackward(n, m, lnz, _max, &ndep, diag, iperm, A, iA, kA, At, iAt, kAt,
       AAt, iAAt, kAAt, //Q, iQ, kQ,
       mark,
       E, D, gy, gx, _fwork, consistent, verbose

@@ -14,7 +14,7 @@ from functools import partial
 all_problems = (
     partial(random_problem, 10, 10, 0.1, 64),
     partial(random_problem, 100, 100, 0.1, 64),
-    #partial(random_problem, 500, 500, 0.1, 64),
+    partial(random_problem, 250, 200, 0.1, 64),
 )
 
 @pytest.mark.noncl
