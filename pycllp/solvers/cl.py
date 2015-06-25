@@ -40,7 +40,7 @@ class ClHSDSolver(BaseCSCSolver):
         A = np.ascontiguousarray(self.A.astype(np.float32)[0,:])
         b = self.b.reshape(np.prod(self.b.shape)).astype(np.float32)
         c= self.c.reshape(np.prod(self.c.shape)).astype(np.float32)
-        print (b, c, nlp)
+
         self.local_size = 1
         self.global_size = nlp*self.local_size
 
@@ -57,7 +57,7 @@ class ClHSDSolver(BaseCSCSolver):
 
         # Verify input.
 
-        if m < 20 and n < 20:
+        if m < 20 and n < 20 and verbose > 0:
             AA = np.zeros((20, 20))
             for j in range(n):
                 for k in range(kA[j], kA[j+1]):
@@ -106,16 +106,15 @@ class ClHSDSolver(BaseCSCSolver):
         self.status = np.empty(nlp, dtype=np.int32)
         self.g_status = cl.Buffer(ctx, mf.WRITE_ONLY, self.status.nbytes)
 
-        print (kA, kAt)
         # 	Display Banner.
-
-        print("m = {:d},n = {:d},nz = {:d}".format(m, n, nz))
-        print(
-    """--------------------------------------------------------------------------
-             |           Primal          |            Dual           |       |
-      Iter   |  Obj Value       Infeas   |  Obj Value       Infeas   |  mu   |
-    - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    """)
+        if verbose > 0:
+            print("m = {:d},n = {:d},nz = {:d}".format(m, n, nz))
+            print(
+        """--------------------------------------------------------------------------
+                 |           Primal          |            Dual           |       |
+          Iter   |  Obj Value       Infeas   |  Obj Value       Infeas   |  mu   |
+        - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        """)
 
         # 	Iteration.
         ldltfac = LDLTFAC(n, m, kAt, iAt, At, kA, iA, A, verbose)
@@ -129,7 +128,7 @@ class ClHSDSolver(BaseCSCSolver):
         #self.g_diag = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
         #                        hostbuf=self.diag)
         self.l_diag = cl.LocalMemory(self.diag.nbytes)
-        print('diag',self.diag)
+
         self.perm = ldltfac.perm.astype(np.int32)
         self.g_perm = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
                                 hostbuf=self.perm)
@@ -137,7 +136,7 @@ class ClHSDSolver(BaseCSCSolver):
         self.iperm = ldltfac.iperm.astype(np.int32)
         self.g_iperm = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
                                  hostbuf=self.iperm)
-        print('iperm', self.iperm)
+
         self.AAt = ldltfac.AAt.astype(np.float32)
         #self.g_AAt = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR,
         #                       hostbuf=self.AAt)
@@ -163,12 +162,11 @@ class ClHSDSolver(BaseCSCSolver):
         self.g_kQ = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
                                 hostbuf=self.kQ)
 
-        print(self.AAt, self.iAAt, self.kAAt)
         print('Creating OpenCL program...')
         path = os.path.dirname(__file__)
         path = os.path.join(path, '..','cl')
-        build_opts = ['-I '+path, '-cl-single-precision-constant',
-            '-cl-opt-disable', ]
+        build_opts = ['-I '+path, ]#'-cl-single-precision-constant',
+            #'-cl-opt-disable', ]
 
         src_files = ['hsd.cl', 'linalg.cl', 'ldlt.cl']
         src = ''

@@ -509,7 +509,6 @@ class StandardLP(object):
         lp = StandardLP()
         lp.set_num_problems(self.nproblems)
         for row, cols, value, bound in self.rows:
-            print(row, cols, value, bound.shape, bound)
             if np.all(np.isinf(bound)):
                 # All unbounded, don't add
                 continue

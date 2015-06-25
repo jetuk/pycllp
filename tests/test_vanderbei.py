@@ -29,7 +29,7 @@ def pytest_solver(name, solver_cls, solver_args, problem_func):
 
     solver = solver_cls(*solver_args)
     slp.init(solver)
-    slp.solve(solver, verbose=2)
+    slp.solve(solver, verbose=0)
 
     np.testing.assert_equal(solver.status, 0)
     np.testing.assert_almost_equal(np.squeeze(solver.x), xopt,
@@ -39,7 +39,7 @@ def pytest_solver(name, solver_cls, solver_args, problem_func):
 @pytest.mark.parametrize("name,solver_cls,problem_name,problem_func",
     [(n, s, pn, pf) for (n, s), (pn, pf) in product(non_cl_solvers,all_problems)])
 def test_noncl_solvers(name, solver_cls, problem_name, problem_func):
-    pytest_solver_parallel(name, solver_cls, [], problem_func)                                   
+    pytest_solver_parallel(name, solver_cls, [], problem_func)
 
 
 @pytest.mark.parametrize("device,name,solver_cls,problem_func",
@@ -67,8 +67,8 @@ def pytest_solver_parallel(name, solver_cls, solver_args, problem_func):
     pysolver = solver_registry['cyhsd']()
     slp.init(pysolver)
     slp.solve(pysolver, verbose=0)
-    ind = np.where(solver.status >= 0)
-    np.testing.assert_almost_equal(solver.status, pysolver.status,)
+    ind = np.where(solver.status == 0)
+    np.testing.assert_almost_equal(solver.status==0, pysolver.status==0,)
     np.testing.assert_almost_equal(
                 solver.x[ind, :],
                 pysolver.x[ind, :], decimal=2)
