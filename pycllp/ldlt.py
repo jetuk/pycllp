@@ -953,7 +953,11 @@ class LDLTFAC(object):
             if (cnt > lnz):
                 lnz = max( cnt, 2*lnz )
                 #iAAt = np.zeros(lnz, dtype=np.int)
-                self.iAAt = iAAt = np.resize(iAAt,lnz)
+                if lnz-len(iAAt) > 0:
+                    self.iAAt = iAAt = np.pad(iAAt, (0, lnz-len(iAAt)),
+                                              mode='constant')
+                else:
+                    self.iAAt = iAAt = iAAt[:lnz]
 
             # copy adjacency lists in iAAt, kAAt */
 
@@ -1130,7 +1134,10 @@ class LDLTFAC(object):
 
         lnz    = kAAt[m]
         #iAAt = np.zeros(lnz, dtype=np.int)
-        self.iAAt = iAAt = np.resize(iAAt,lnz)
+        if lnz-len(iAAt) > 0:
+            self.iAAt = iAAt = np.pad(iAAt, (0, lnz-len(iAAt)), mode='constant')
+        else:
+            self.iAAt = iAAt = iAAt[:lnz]
         if (verbose>1):
             print("nonzeros:    L {:10d},  arith_ops {:18.0f}".format(lnz, narth))
 
@@ -1154,7 +1161,7 @@ def qksort(v, left,right):
 
     swap(v, left, (left + right)/2)  # move partition elem
     last = left  # to v[left]
-    for i in range(left+1, right): # partition
+    for i in range(left+1, right+1): # partition
         if (v[i] < v[left]):
             last += 1
             swap(v, last, i)
