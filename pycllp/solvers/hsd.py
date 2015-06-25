@@ -11,14 +11,14 @@ Port to Python
 """
 from __future__ import print_function
 import numpy as np
-from . import BaseSolver
+from . import BaseCSCSolver
 from ..ldlt import LDLTFAC
 from ..linalg import smx, atnum
 
 EPS = 1.0e-12
 MAX_ITER = 200
 
-class HSDSolver(BaseSolver):
+class HSDSolver(BaseCSCSolver):
     name = 'hsd'
     def __init__(self, fdtype=np.float64, idtype=np.int64):
         super(HSDSolver, self).__init__()
@@ -26,7 +26,7 @@ class HSDSolver(BaseSolver):
         self.idtype = idtype
 
     def init(self, A, b, c, f=0.0):
-        BaseSolver.init(self, A, b, c, f=f)
+        super(HSDSolver, self).init(A, b, c, f=f)
 
     def solve(self, verbose=0):
         n,nlp = self.n,self.nlp
@@ -41,11 +41,10 @@ class HSDSolver(BaseSolver):
     def _solve(self, ilp, verbose=0):
         n = self.n
         m = self.m
-        Acsc = self.A.tocsc(problem=ilp)
-        nz = Acsc.nnz
-        A = Acsc.data.astype(self.fdtype)
-        iA = Acsc.indices
-        kA = Acsc.indptr
+        nz = len(self.Ai)
+        A = self.A[ilp, :].astype(self.fdtype)
+        iA = self.Ai.astype(self.idtype)
+        kA = self.Ak.astype(self.idtype)
         b = self.b[ilp,:].astype(self.fdtype)
         c= self.c[ilp,:].astype(self.fdtype)
         f=self.f[ilp].astype(self.fdtype)
