@@ -5,11 +5,15 @@ try:
 except ImportError:
     cl = None
 import vanderbei_problems
-from helpers import non_cl_solvers, cl_solvers, devices, perturb_problem
+from helpers import (non_cl_solvers, cl_solvers, devices, pytest_solver_parallel,
+                     perturb_problem)
 import inspect
 from itertools import product
+from functools import partial
 
 all_problems = inspect.getmembers(vanderbei_problems, inspect.isfunction)
+# Create perturbed problems
+all_problems = [(pn, partial(perturb_problem, pf, 1024)) for pn, pf in all_problems]
 
 @pytest.mark.noncl
 @pytest.mark.parametrize("name,solver_cls,problem_name,problem_func",
@@ -49,26 +53,3 @@ def test_cl_solvers_parallel(device, name, solver_cls, problem_func):
     ctx = cl.Context(devices=[device])
     queue = cl.CommandQueue(ctx)
     pytest_solver_parallel(name, solver_cls, [ctx, queue], problem_func)
-
-
-def pytest_solver_parallel(name, solver_cls, solver_args, problem_func):
-    from pycllp.lp import GeneralLP
-    from pycllp.solvers import solver_registry
-
-    args = perturb_problem(problem_func, 1024)
-
-    lp = GeneralLP(*args)
-    slp = lp.to_standard_form()
-
-    solver = solver_cls(*solver_args)
-    slp.init(solver)
-    slp.solve(solver, verbose=0)
-
-    pysolver = solver_registry['cyhsd']()
-    slp.init(pysolver)
-    slp.solve(pysolver, verbose=0)
-    ind = np.where(solver.status == 0)
-    np.testing.assert_almost_equal(solver.status==0, pysolver.status==0,)
-    np.testing.assert_almost_equal(
-                solver.x[ind, :],
-                pysolver.x[ind, :], decimal=2)
