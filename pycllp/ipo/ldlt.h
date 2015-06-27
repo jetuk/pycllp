@@ -2,13 +2,13 @@ void ldltfac(
         int     m,      /* rows */
         int     n,      /* columns */
         int     *kA,    /* constraint matrix in three linear arrays */
-        int     *iA, 
-        double  *A, 
+        int     *iA,
+        double  *A,
         double  *dn,    /* diagonal matrix for upper-left  corner */
         double  *dm,    /* diagonal matrix for lower-right corner */
         int     *kAt,   /* A^T in three linear arrays */
-        int     *iAt, 
-        double  *At, 
+        int     *iAt,
+        double  *At,
         int     verbose /* verbosity */
 );
 
@@ -18,3 +18,7 @@ void forwardbackward(
 	double	*dx,
 	double	*dy
 );
+
+int *kAAt, *iAAt;
+double *AAt;
+LP *lp;

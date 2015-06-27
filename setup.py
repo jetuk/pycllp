@@ -2,6 +2,7 @@ from setuptools import setup, Extension
 from Cython.Distutils import build_ext
 from Cython.Build import cythonize
 import os
+import numpy
 
 common_sources = ['cputime.c', 'hash.c', 'heap.c', 'hook.c', 'iolp.c',
                   'linalg.c', 'main.c', 'solve.c', 'strdup.c', 'tree.c',
@@ -14,7 +15,7 @@ all_sources += [os.path.join('pycllp','ipo',src) for src in ipo_sources]
 
 cyipo = Extension('pycllp._ipo',
     sources = all_sources,
-    include_dirs = ['pycllp/common', 'pycllp/ipo']
+    include_dirs = ['pycllp/common', 'pycllp/ipo', numpy.get_include()]
     )
 
 setup(name='pycllp',
