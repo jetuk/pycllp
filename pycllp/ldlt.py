@@ -729,7 +729,7 @@ class LDLTFAC(object):
                 if self.tier[j] == 0:
                     tot += degree[j]
                     cnt+=1
-            dense = int(denfac*i)
+            self.dense = dense = int(denfac*i)
 
             #dense = (int)(denfac*MAX(i,tot/cnt))
     		#printf("i = %d, n = %d, m = %d, n1 = %d \n", i,n,m,n1)

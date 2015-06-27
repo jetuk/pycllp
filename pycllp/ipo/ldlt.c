@@ -6,7 +6,11 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+#ifdef _WIN32
+#include <io.h>
+#else
 #include <unistd.h>
+#endif
 #include <sys/types.h>
 #include <time.h>
 #include <stdlib.h>
@@ -105,8 +109,10 @@ static void lltnum(
 
 /* Declare static variables */
 
-static  int     *kAAt=NULL, *iAAt=NULL, *mark=NULL, *perm=NULL, *iperm=NULL;
-static  double  *AAt =NULL, *diag=NULL;
+int        *kAAt=NULL, *iAAt=NULL;
+static int *mark=NULL, *perm=NULL, *iperm=NULL;
+double        *AAt =NULL;
+static double *diag=NULL;
 
 static  double  epssol, epsnum, epscdn, stablty, epsdiag;
 static  int     method, dense;
@@ -117,7 +123,7 @@ static  int     pdf;
 static  double *y_k=NULL, *x_k=NULL,
 	*r=NULL, *s=NULL, *z=NULL, *Qx=NULL;
 
-static  LP *lp=NULL;
+LP *lp=NULL;
 
 /* Define functions */
 
