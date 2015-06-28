@@ -1,7 +1,8 @@
 import numpy as np
 from scipy.sparse import rand, csc_matrix
-from pycllp._ipo import ldltfac as c_ldltfac, getAAt
+from pycllp._ipo import ldltfac as c_ldltfac, getAAt, inv_clo
 from pycllp.ldlt import LDLTFAC
+import pytest
 
 
 def test_atnum():
@@ -22,25 +23,27 @@ def test_atnum():
     np.testing.assert_equal(scipy_At.indptr, kAt)
     np.testing.assert_almost_equal(scipy_At.data, At)
 
-def test_ldlt():
-    m = 10
-    n = 10
+
+@pytest.mark.parametrize("N", [10, 100, 250])
+def test_ldlt(N):
+    m = n = N
+    np.random.seed(0)
     A = rand(m, n, density=0.1, format='csc')
     At = A.transpose().tocsc()
     dn = np.ones(n+m)
     dm = np.ones(m+n)
-    print A.indptr, A.indices
-    print At.indptr, At.indices
-    print "Running ldltfac"
+
     c_ldltfac(m, n, A.indptr, A.indices, A.data, dn, dm,
-              At.indptr, At.indices, At.data, 3)
-    print "Getting AAt"
+              At.indptr, At.indices, At.data, 0)
+
     ckAAt, ciAAt, cAAt = getAAt()
 
     ldltfac = LDLTFAC(m, n, A.indptr, A.indices, A.data,
-                      At.indptr, At.indices, At.data, 3)
+                      At.indptr, At.indices, At.data, 0)
     ldltfac.inv_num(dn, dm)
 
     np.testing.assert_equal(ckAAt, ldltfac.kAAt)
     np.testing.assert_equal(ciAAt, ldltfac.iAAt)
     np.testing.assert_almost_equal(cAAt, ldltfac.AAt)
+
+    inv_clo()

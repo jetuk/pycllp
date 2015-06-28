@@ -1190,12 +1190,12 @@ def hfall(heapnum, key, iheap, heap, cur):
             break
 
 def hrise(key, iheap, heap, cur):
-    parent = cur/2
+    parent = cur//2
     while (parent > 0):
         if (key[heap[parent]] > key[heap[cur]]):
             swap(heap, cur, parent)
             swap(iheap, heap[cur], heap[parent])
             cur = parent
-            parent = cur/2
+            parent = cur//2
         else:
             break

@@ -13,8 +13,8 @@ from functools import partial
 # Arguments for random_problem are m, n, density and nproblems
 all_problems = (
     partial(random_problem, 10, 10, 0.1, 64),
-    partial(random_problem, 100, 100, 0.1, 64),
-    partial(random_problem, 250, 200, 0.1, 64),
+    partial(random_problem, 20, 20, 0.1, 64),
+    partial(random_problem, 50, 50, 0.1, 64),
 )
 
 @pytest.mark.noncl
