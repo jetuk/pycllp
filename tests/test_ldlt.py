@@ -24,7 +24,7 @@ def test_atnum():
     np.testing.assert_almost_equal(scipy_At.data, At)
 
 
-@pytest.mark.parametrize("N", [10, 100, 250])
+@pytest.mark.parametrize("N", [10, 20, 50, 100, 250])
 def test_ldlt(N):
     m = n = N
     np.random.seed(0)

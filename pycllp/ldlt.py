@@ -8,6 +8,7 @@ Port to Python
     James E. Tomlinson
     2015
 """
+from __future__ import division, print_function
 import numpy as np
 from .linalg import smx
 import sys
@@ -804,7 +805,7 @@ class LDLTFAC(object):
         aatnz = 0
         for i in range(m):
             aatnz += degree[i]
-        aatnz = aatnz/2
+        aatnz = aatnz//2
         lnz   = aatnz
 
         #/*---------------------------------------------------------+
@@ -929,10 +930,11 @@ class LDLTFAC(object):
                 nbr = node_nbrs[k]
                 if (degree[nbr] == deg and tier[nbr] == tier[node]):
                     nbr_nbrs = nbrs[nbr]
-                    for kk in range(deg):
+                    kk = 0
+                    while kk < deg:
                         if (iperm[nbr_nbrs[kk]] < i):
                             break
-                    kk += 1
+                        kk+=1
                     if (kk == deg):
                         perm[i2] = nbr
                         iperm[nbr] = i2
@@ -949,7 +951,7 @@ class LDLTFAC(object):
 
             ni = i2-i      # number of indistinguishable nodes */
 
-            cnt = nz + ( deg*(deg+1) - (deg-ni)*(deg-ni+1) )/2
+            cnt = nz + ( deg*(deg+1) - (deg-ni)*(deg-ni+1) )//2
             if (cnt > lnz):
                 lnz = max( cnt, 2*lnz )
                 #iAAt = np.zeros(lnz, dtype=np.int)
@@ -1105,6 +1107,7 @@ class LDLTFAC(object):
 
             for ii in range(i, i2):
                 node = perm[ii]
+                print("node", node, ii, i, i2)
                 nbrs[node] = None  # memfree += spc[node]
             i = i2
 
@@ -1159,7 +1162,7 @@ def qksort(v, left,right):
     if (left >= right):
         return  #  do nothing if array contains fewer than two elements
 
-    swap(v, left, (left + right)/2)  # move partition elem
+    swap(v, left, (left + right)//2)  # move partition elem
     last = left  # to v[left]
     for i in range(left+1, right+1): # partition
         if (v[i] < v[left]):
