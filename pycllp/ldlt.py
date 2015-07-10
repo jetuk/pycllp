@@ -1107,7 +1107,6 @@ class LDLTFAC(object):
 
             for ii in range(i, i2):
                 node = perm[ii]
-                print("node", node, ii, i, i2)
                 nbrs[node] = None  # memfree += spc[node]
             i = i2
 
