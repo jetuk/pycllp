@@ -75,33 +75,40 @@ class ClHSDSolver(BaseCSCSolver):
 
             print("")
 
-        #  Initialization.
-
+        # Host side storage of results.
         self.x = np.ones(nlp*n, dtype=np.float32)
-        z = np.ones(nlp*n, dtype=np.float32)
-        w = np.ones(nlp*m, dtype=np.float32)
         self.y = np.ones(nlp*m, dtype=np.float32)
+        xsize = self.x.nbytes
+        ysize = self.y.nbytes
 
         atnum(m,n,kA,iA,A,kAt,iAt,At)
 
-        # Initialize buffers
+        # List of tuple (source, destination) of data to copy to device
+        # COPY_HOST_PTR is not used so we can benchmark the data transfer time
+        data_to_transfer = []
+
+        # Create buffers (but no data transfer)
         mf = cl.mem_flags
 
-        self.g_c = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=c)
-        self.g_b = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=b)
+        self.g_c = cl.Buffer(ctx, mf.READ_ONLY, xsize)
+        self.g_b = cl.Buffer(ctx, mf.READ_ONLY, ysize)
+        data_to_transfer.extend([(c, self.g_c), (b, self.g_b)])
+        # TODO copy initial conditions to device. CL code currently
+        # starts at unity for all columns.
+        self.g_x = cl.Buffer(ctx, mf.READ_WRITE, xsize)
+        self.g_z = cl.Buffer(ctx, mf.READ_WRITE, xsize)
+        self.g_w = cl.Buffer(ctx, mf.READ_WRITE, ysize)
+        self.g_y = cl.Buffer(ctx, mf.READ_WRITE, ysize)
 
-        self.g_x = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=self.x)
-        self.g_z = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=z)
-        self.g_w = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=w)
-        self.g_y = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=self.y)
-
-        self.g_iA = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=iA)
-        self.g_kA = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=kA)
-        self.g_A = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=A)
+        self.g_iA = cl.Buffer(ctx, mf.READ_ONLY, iA.nbytes)
+        self.g_kA = cl.Buffer(ctx, mf.READ_ONLY, kA.nbytes)
+        self.g_A = cl.Buffer(ctx, mf.READ_ONLY, A.nbytes)
+        data_to_transfer.extend([(iA, self.g_iA), (kA, self.g_kA), (A, self.g_A)])
         # buffers for A^T
-        self.g_iAt = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=iAt)
-        self.g_kAt = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=kAt)
-        self.g_At = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=At)
+        self.g_iAt = cl.Buffer(ctx, mf.READ_ONLY, iAt.nbytes)
+        self.g_kAt = cl.Buffer(ctx, mf.READ_ONLY, kAt.nbytes)
+        self.g_At = cl.Buffer(ctx, mf.READ_ONLY, At.nbytes)
+        data_to_transfer.extend([(iAt, self.g_iAt), (kAt, self.g_kAt), (At, self.g_At)])
 
         self.status = np.empty(nlp, dtype=np.int32)
         self.g_status = cl.Buffer(ctx, mf.WRITE_ONLY, self.status.nbytes)
@@ -129,12 +136,12 @@ class ClHSDSolver(BaseCSCSolver):
         self.g_diag = cl.Buffer(ctx, mf.READ_WRITE, self.diag.nbytes)
 
         self.perm = ldltfac.perm.astype(np.int32)
-        self.g_perm = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
-                                hostbuf=self.perm)
+        self.g_perm = cl.Buffer(ctx, mf.READ_ONLY, self.perm.nbytes)
+        data_to_transfer.append((self.perm, self.g_perm))
 
         self.iperm = ldltfac.iperm.astype(np.int32)
-        self.g_iperm = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
-                                 hostbuf=self.iperm)
+        self.g_iperm = cl.Buffer(ctx, mf.READ_ONLY, self.iperm.nbytes)
+        data_to_transfer.append((self.iperm, self.g_iperm))
 
         self.AAt = ldltfac.AAt.astype(np.float32)
         self.lnz = self.AAt.shape[0]
@@ -143,29 +150,37 @@ class ClHSDSolver(BaseCSCSolver):
         #self.l_AAt = cl.LocalMemory(self.AAt.nbytes)
 
         self.iAAt = ldltfac.iAAt.astype(np.int32)
-        self.g_iAAt = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
-                                hostbuf=self.iAAt)
+        self.g_iAAt = cl.Buffer(ctx, mf.READ_ONLY, self.iAAt.nbytes)
+        data_to_transfer.append((self.iAAt, self.g_iAAt))
 
         self.kAAt = ldltfac.kAAt.astype(np.int32)
-        self.g_kAAt = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
-                                hostbuf=self.kAAt)
+        self.g_kAAt = cl.Buffer(ctx, mf.READ_ONLY, self.kAAt.nbytes)
+        data_to_transfer.append((self.kAAt, self.g_kAAt))
 
-        self.Q = ldltfac.Q.astype(np.float32)
-        self.g_Q = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
-                               hostbuf=self.Q)
+        # Q matrix is currently not used
+        #self.Q = ldltfac.Q.astype(np.float32)
+        #self.g_Q = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
+        #                       hostbuf=self.Q)
 
-        self.iQ = ldltfac.iQ.astype(np.int32)
-        self.g_iQ = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
-                                hostbuf=self.iQ)
+        #self.iQ = ldltfac.iQ.astype(np.int32)
+        #self.g_iQ = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
+        #                        hostbuf=self.iQ)
 
-        self.kQ = ldltfac.kQ.astype(np.int32)
-        self.g_kQ = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
-                                hostbuf=self.kQ)
+        #self.kQ = ldltfac.kQ.astype(np.int32)
+        #self.g_kQ = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR,
+        #                        hostbuf=self.kQ)
+
+        # Copy data from host to device
+        with cl.CommandQueue(ctx) as queue:
+            for src, dest in data_to_transfer:
+                evt = cl.enqueue_copy(queue, dest, src, is_blocking=False)
+
+
         if verbose > 0:
             print('Creating OpenCL program...')
         path = os.path.dirname(__file__)
         path = os.path.join(path, '..','cl')
-        build_opts = ['-I '+path, ]#'-cl-single-precision-constant',
+        build_opts = ['-I '+path]#'-cl-single-precision-constant',
             #'-cl-opt-disable', ]
 
         src_files = ['hsd.cl', 'linalg.cl', 'ldlt.cl']
@@ -217,7 +232,7 @@ class ClHSDSolver(BaseCSCSolver):
         status = self.g_status
         if verbose > 0:
             print('Executing kernel...')
-        self.cl_prg.hsd(
+        event = self.cl_prg.hsd(
             queue,
             gs,
             ls,
@@ -225,6 +240,7 @@ class ClHSDSolver(BaseCSCSolver):
             A,iA,kA,At,iAt,kAt,AAt,iAAt,kAAt,#Q,iQ,kQ,
             fwork,iwork,status,v
         )
+        event.wait()
         cl.enqueue_copy(queue, self.status, status)
         cl.enqueue_copy(queue, self.x, x)
         cl.enqueue_copy(queue, self.y, y)
