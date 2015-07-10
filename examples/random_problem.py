@@ -52,7 +52,7 @@ def solve(N, NP, solver_name):
 
     solver = solver_cls(*solver_args)
     slp.init(solver)
-    slp.solve(solver)
+    slp.solve(solver, verbose=0)
 
 
 if __name__ == '__main__':
