@@ -79,6 +79,9 @@ class DensePathFollowingSolver(BaseSolver):
 
         At = A.T
 
+        B[:m, m:] = A   # top right
+        B[m:, :m] = At  # bottom left
+
         # 	Display Banner.
         if verbose > 0:
             print("m = {:d},n = {:d},nz = {:d}".format(m, n, self.A.nnzeros))
@@ -136,8 +139,7 @@ class DensePathFollowingSolver(BaseSolver):
             # Create B matrix
 
             B[:m, :m] = np.diag(-E)  # top left
-            B[:m, m:] = A   # top right
-            B[m:, :m] = At  # bottom left
+
             B[m:, m:] = np.diag(D)  # bottom right
 
             dx = sigma - z + mu/x
