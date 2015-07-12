@@ -42,3 +42,24 @@ def atnum(m, n, ka, ia, a, kat, iat, at):
             at[addr]  = a[k]
 
     del(iwork)
+
+
+def conjgrad(A, b, x):
+    r = b - np.dot(A, x)
+    p = r.copy()
+    rsold = np.dot(r, r)
+
+    for i in range(100):
+        Ap = np.dot(A, p)
+        alpha = rsold / np.dot(p, Ap)
+        x += alpha*p
+        r -= alpha*Ap
+        rsnew = np.dot(r, r)
+        print(np.sqrt(rsnew), alpha)
+        if np.sqrt(rsnew) < 1e-10:
+            return 0
+
+        p = r + rsnew/rsold*p
+        rsold = rsnew
+
+    return -1
