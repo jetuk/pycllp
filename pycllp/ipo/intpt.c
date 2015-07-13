@@ -3,12 +3,12 @@
                 Implementation of the Primal-Dual Interior Point Method
                               Robert J. Vanderbei
                                 28 November 1994
-                                                        
-******************************************************************************/         
+
+******************************************************************************/
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-        
+
 #ifdef QuadPrec
 #include "Quad.h"
 #define double Quad
@@ -30,9 +30,9 @@
 #define EPS 1.0e-6
 #define MAX_ITER 200
 
-int solver(int m,int n,int nz,int *iA, int *kA, 
+int solver(int m,int n,int nz,int *iA, int *kA,
 		double *A, double *b, double *c, double f,
-		double *x, double *y, double *w, double *z)
+		double *x, double *y, double *w, double *z, int verbose)
 {
     double  *dx, *dw, *dy, *dz;                          /* step directions */
     double  *rho, *sigma, normr0, norms0;	 	 /* infeasibilites */
@@ -42,7 +42,7 @@ int solver(int m,int n,int nz,int *iA, int *kA,
     double  *At;			 /* arrays for A^T */
     int     *iAt, *kAt;
 
-    int     i,j,iter,v=1,status=5;	
+    int     i,j,iter,v=verbose,status=5;
 
     float   primal_obj, dual_obj, normr, norms;
 
@@ -50,20 +50,20 @@ int solver(int m,int n,int nz,int *iA, int *kA,
     * Allocate memory for arrays.
     *******************************************************************/
 
-    MALLOC(    dx, n,   double );      
-    MALLOC(    dw, m,   double );      
-    MALLOC(    dy, m,   double );      
-    MALLOC(    dz, n,   double );      
-    MALLOC(   rho, m,   double );      
-    MALLOC( sigma, n,   double );      
-    MALLOC(     D, n,   double );      
-    MALLOC(     E, m,   double );      
+    MALLOC(    dx, n,   double );
+    MALLOC(    dw, m,   double );
+    MALLOC(    dy, m,   double );
+    MALLOC(    dz, n,   double );
+    MALLOC(   rho, m,   double );
+    MALLOC( sigma, n,   double );
+    MALLOC(     D, n,   double );
+    MALLOC(     E, m,   double );
 
     MALLOC(   At,  nz,  double );
     MALLOC(  iAt,  nz,  int );
     MALLOC(  kAt, m+1,  int );
 
-    /**************************************************************** 
+    /****************************************************************
     *  Verify input.                				    *
     ****************************************************************/
 
@@ -91,18 +91,18 @@ int solver(int m,int n,int nz,int *iA, int *kA,
 	printf("\n");
     }
 
-    /**************************************************************** 
+    /****************************************************************
     *  Initialization.              				    *
     ****************************************************************/
 
     for (j=0; j<n; j++) {
-	x[j] = 1000.0;
-	z[j] = 1000.0;
+	x[j] = 1.0;
+	z[j] = 1.0;
     }
 
     for (i=0; i<m; i++) {
-	w[i] = 1000.0;
-	y[i] = 1000.0;
+	w[i] = 1.0;
+	y[i] = 1.0;
     }
 
     atnum(m,n,kA,iA,A,kAt,iAt,At);
@@ -160,8 +160,8 @@ int solver(int m,int n,int nz,int *iA, int *kA,
 
 	primal_obj = dotprod(c,x,n) + f;
 	dual_obj   = dotprod(b,y,m) + f;
-	printf("%8d   %14.7e  %8.1e    %14.7e  %8.1e \n", 
-		iter, primal_obj, normr, dual_obj, norms);
+	printf("%8d   %14.7e  %8.1e    %14.7e  %8.1e %8.1e %8.1e \n",
+		iter, primal_obj, normr, dual_obj, norms, gamma, EPS);
 	fflush(stdout);
 
         /*************************************************************
@@ -209,11 +209,11 @@ int solver(int m,int n,int nz,int *iA, int *kA,
         *************************************************************/
 
 	theta = 0.0;
-	for (j=0; j<n; j++) { 
+	for (j=0; j<n; j++) {
 	    if (theta < -dx[j]/x[j]) { theta = -dx[j]/x[j]; }
 	    if (theta < -dz[j]/z[j]) { theta = -dz[j]/z[j]; }
 	}
-	for (i=0; i<m; i++) { 
+	for (i=0; i<m; i++) {
 	    if (theta < -dy[i]/y[i]) { theta = -dy[i]/y[i]; }
 	    if (theta < -dw[i]/w[i]) { theta = -dw[i]/w[i]; }
 	}
@@ -223,11 +223,11 @@ int solver(int m,int n,int nz,int *iA, int *kA,
 	* STEP 6: Step to new point
         *************************************************************/
 
-	for (j=0; j<n; j++) { 
+	for (j=0; j<n; j++) {
 	    x[j] = x[j] + theta*dx[j];
 	    z[j] = z[j] + theta*dz[j];
 	}
-	for (i=0; i<m; i++) { 
+	for (i=0; i<m; i++) {
 	    y[i] = y[i] + theta*dy[i];
 	    w[i] = w[i] + theta*dw[i];
 	}
@@ -235,14 +235,14 @@ int solver(int m,int n,int nz,int *iA, int *kA,
 
 	normr0 = normr;
 	norms0 = norms;
-    }  	
+    }
 
     /****************************************************************
     * 	Free work space                                             *
     ****************************************************************/
 
-    FREE(     w );
-    FREE(     z );
+    //FREE(     w );
+    //FREE(     z );
     FREE(    dx );
     FREE(    dw );
     FREE(    dy );
