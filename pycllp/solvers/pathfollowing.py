@@ -86,10 +86,10 @@ class DensePathFollowingSolver(BaseSolver):
         if verbose > 0:
             print("m = {:d},n = {:d},nz = {:d}".format(m, n, self.A.nnzeros))
             print(
-            """--------------------------------------------------------------------------
-                     |           Primal          |            Dual           |       |
-              Iter   |  Obj Value       Infeas   |  Obj Value       Infeas   |  mu   |
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+            """---------------------------------------------------------------
+                     |           Primal          |            Dual           |
+              Iter   |  Obj Value       Infeas   |  Obj Value       Infeas   |
+            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
             """)
 
         # 	Iteration.
