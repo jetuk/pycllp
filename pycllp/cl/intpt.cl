@@ -4,7 +4,7 @@ OpenCL translation of the path following interior point method.
 #include <linalg2.h>
 #include <ldlt2.h>
 
-#define EPS 1.0e-6
+#define EPS 1.0e-4
 #define MAX_ITER 200
 
 __kernel void intpt(
@@ -130,8 +130,8 @@ __kernel void intpt(
         for (i=m0; i<gsize*m; i+=gsize) {
       	  dual_obj += b[i]*y[i];
         }
-      	printf("%8d %8d   %14.7e  %8.1e    %14.7e  %8.1e \n",
-      		gid, iter, primal_obj, normr, dual_obj, norms);
+      	printf("%8d %8d   %14.7e  %8.1e    %14.7e  %8.1e %8.1e \n",
+      		gid, iter, primal_obj, normr, dual_obj, norms, gamma);
       }
       #endif
 

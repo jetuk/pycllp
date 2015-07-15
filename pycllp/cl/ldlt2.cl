@@ -154,6 +154,7 @@ void lltnum(
                     row = iAAt[kk];
                     if (mark[gid+i*gsize]) {
                             AAt[gid+kk*gsize] /= diagi;
+                            //printf("AAt[%d] %f\n", kk, AAt[kk]);
                     } else {
                             AAt[gid+kk*gsize] = 0.0;
 		    }
@@ -244,7 +245,7 @@ void inv_num(
           }
 
           for (k=kAt[i]; k<kAt[i+1]; k++) {
-                  row = iperm[iA[k]];
+                  row = iperm[iAt[k]];
                   if (row > col) {
                     AAt[gid+iwork[gid+row*gsize]*gsize] = At[k];
                   }
@@ -314,12 +315,15 @@ void rawsolve(
       for (k=kAAt[i]; k<kAAt[i+1]; k++) {
         row = iAAt[k];
         z[gid+row*gsize] -= AAt[gid+k*gsize]*beta;
+        //printf(" z[%d] %f %f %f\n", row, z[row], beta, AAt[k]);
       }
+
     } else if ( fabs(z[gid+i*gsize]) > eps ) {
       consistent = FALSE;
     } else {
       z[gid+i*gsize] = 0.0;
     }
+    //printf("z[%d] %f\n", i, z[i]);
   }
 
   /*------------------------------------------------------+
@@ -351,6 +355,7 @@ void rawsolve(
         beta -= AAt[gid+k*gsize]*z[gid+iAAt[k]*gsize];
       }
       z[gid+i*gsize] = beta;
+      //printf("z[%d] %f\n", gid+i*gsize, z[gid+i*gsize]);
     } else if ( fabs(z[gid+i*gsize]) > eps ) {
       consistent = FALSE;
     } else {
@@ -457,7 +462,7 @@ void forwardbackward(
 
 	    /* --- for tuning purposes --- */
       #if __OPENCL_C_VERSION__ >= CL_VERSION_1_2
-      if (verbose>0 && pass>0) {
+      if (verbose>2 && pass>-1) {
         maxv(s,n,&temp1);
         maxv(r,m,&temp2);
 		    printf("refinement(%3d): %8.2e %8.2e %8.2e \n",
