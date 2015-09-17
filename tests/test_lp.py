@@ -207,7 +207,7 @@ class TestGeneralLP(object):
 
     def test_array_init(self, ):
         from scipy.sparse import csc_matrix
-        B = np.reshape(np.arange(1, 7, dtype=np.float32),(3,2))
+        B = np.reshape(np.arange(1, 7, dtype=np.float32), (3, 2))
         A = SparseMatrix(matrix=csc_matrix(B))
         b = np.zeros(A.nrows)
         c = np.zeros(A.ncols)

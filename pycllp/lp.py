@@ -329,16 +329,16 @@ class StandardLP(object):
         """
         if A is not None:
             if b is None or c is None or f is None:
-                raise ValueError("If A matrix is provided then b, c and f must also be provided")
+                raise ValueError("If A matrix is provided then b, c and f must also be provided.")
 
             self.A = A
-            nprb = self.A.nproblems
+            if self.A.nproblems > 1:
+                raise ValueError("A matrix can only have a single problem in the current implementation.")
 
             self.b = np.array(b)
             if self.b.ndim == 1:
-                self.b = np.array(np.dot(np.ones((nprb, 1)), np.matrix(self.b)))
-            if self.b.shape[0] != nprb:
-                raise ValueError("A matrix and b array do not have the same number of problems.")
+                self.b = np.reshape(self.b, (1, self.b.shape[0]))
+            nprb = self.b.shape[0]
 
             self.c = np.array(c)
             if self.c.ndim == 1:
@@ -371,7 +371,7 @@ class StandardLP(object):
 
     @property
     def nproblems(self, ):
-        return self.A.nproblems
+        return self.b.shape[0]
 
     @property
     def m(self,):
@@ -493,14 +493,14 @@ class StandardLP(object):
         Update the internal number of problems to nproblems. New problems are
         zero filled.
         """
-        self.A.set_num_problems(nproblems)
+        # Currently do not support multiple A matrices
+        # this is primarily a memory optimisation for the intended
+        # use of this library in a problem with a shared A
+        #self.A.set_num_problems(nproblems)
         N = nproblems - self.b.shape[0]
         self.b = np.pad(self.b, ((0, N), (0, 0)), mode='constant')
         self.c = np.pad(self.c, ((0, N), (0, 0)), mode='constant')
         self.f = np.pad(self.f, (0, N), mode='constant')
-        #self.b.resize((nproblems, self.b.shape[1]))
-        #self.c.resize((nproblems, self.c.shape[1]))
-        #self.f.resize(nproblems)
 
     def remove_unbounded(self, ):
         """
@@ -530,7 +530,7 @@ class StandardLP(object):
 
 
 class GeneralLP(StandardLP):
-
+    """ Container for a general linear programme. """
     def __init__(self, A=None, b=None, c=None, d=None, l=None, u=None, f=None):
         """
         Intialise with following general form,
@@ -551,9 +551,9 @@ class GeneralLP(StandardLP):
         :param l: variable lower bounds
         :param u: variable upper bounds
         """
-        StandardLP.__init__(self, A=A, b=b, c=c, f=f)
+        super(GeneralLP, self).__init__(A=A, b=b, c=c, f=f)
         if A is not None:
-            nprb = self.A.nproblems
+            nprb = self.nproblems
 
             if d is not None:
                 self.d = np.array(d)
@@ -673,6 +673,16 @@ class GeneralLP(StandardLP):
         self._set_objective(col, obj)
         self._set_col_bounds(col, lower_bound, upper_bound)
         return col
+
+    def set_num_problems(self, nproblems):
+        """
+        Update the internal number of problems to nproblems. New problems are
+        zero filled.
+        """
+        super(GeneralLP, self).set_num_problems(nproblem)
+        self.d = np.pad(self.d, ((0, N), (0, 0)), mode='constant')
+        self.l = np.pad(self.l, ((0, N), (0, 0)), mode='constant')
+        self.u = np.pad(self.u, (0, N), mode='constant')
 
     def to_standard_form(self,):
         """
