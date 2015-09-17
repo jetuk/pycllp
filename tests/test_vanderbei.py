@@ -45,7 +45,7 @@ def pytest_solver(name, solver_cls, solver_args, problem_func):
 def test_noncl_solvers(name, solver_cls, problem_name, problem_func):
     pytest_solver_parallel(name, solver_cls, [], problem_func)
 
-
+@pytest.mark.cl
 @pytest.mark.parametrize("device,name,solver_cls,problem_func",
                          [(d, n, s, pf) for d, (n, s), (pn, pf) in
                           product(devices, cl_solvers, all_problems)])

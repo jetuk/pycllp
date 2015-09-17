@@ -50,6 +50,7 @@ def parallel_small_problem(N=1024):
 def test_noncl_solvers(name, solver_cls):
     pytest_solver(name, solver_cls, [])
 
+@pytest.mark.cl
 @pytest.mark.parametrize("device,name,solver_cls",
     [(d,n,s) for d,(n,s) in product(devices, cl_solvers)])
 def test_cl_solvers(device, name, solver_cls):
@@ -69,7 +70,7 @@ def pytest_solver(name, solver_cls, solver_args):
     np.testing.assert_almost_equal(np.squeeze(solver.x), (  1.00997e-13,   1.22527e-12,   5.18790e+00),
         decimal=5)
 
-
+@pytest.mark.cl
 @pytest.mark.parametrize("device,name,solver_cls",
     [(d,n,s) for d,(n,s) in product(devices, cl_solvers)])
 def test_cl_solvers_parallel(device, name, solver_cls):
