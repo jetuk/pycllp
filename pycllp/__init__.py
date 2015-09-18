@@ -1,6 +1,3 @@
-import lp
-import solvers
-
 HEADER = 0
 NAME = 1
 ROWS =  2
@@ -22,3 +19,6 @@ FREEVAR   =0x1
 BDD_BELOW =0x2
 BDD_ABOVE =0x4
 BOUNDED   =0x8
+
+import lp
+import solvers
