@@ -44,6 +44,22 @@ class BaseCSCSolver(BaseSolver):
         BaseSolver.init(self, A, b, c, f=f)
         self.A, self.Ai, self.Ak = self.A.tocsc_arrays()
 
+
+class BaseGeneralSolver(BaseSolver):
+    def init(self, A, b, c, d, u, l, f=0.0):
+        super(BaseGeneralSolver, self).init(A, b, c, f=f)
+        self.d = d
+        if self.d.ndim == 1:
+            self.d = np.reshape(d, (1, len(d)))
+
+        self.l = l
+        if self.l.ndim == 1:
+            self.l = np.reshape(l, (1, len(d)))
+
+        self.u = u
+        if self.u.ndim == 1:
+            self.u = np.reshape(u, (1, len(d)))            
+
 # register solvers
 try:
     from .cython import CyHSDSolver

@@ -24,9 +24,10 @@ def perturb_problem(problem_func, N):
     b = (0.5+np.random.rand(N, len(b)))*b
     r = (0.5+np.random.rand(N, len(r)))*r
     c = (0.5+np.random.rand(N, len(c)))*c
-    old_A_data = A.data.copy()
-    A.set_num_problems(N)
-    A.data = np.ones(A.data.shape)*old_A_data
+    print(A.nproblems)
+    #old_A_data = A.data.copy()
+    #A.set_num_problems(N)
+    #A.data = np.ones(A.data.shape)*old_A_data
 
     return A, b, c, r, l, u, f
 
@@ -49,9 +50,9 @@ def random_problem(m, n, density, nproblems):
     # Create sparse matrix with scipy.sparse
 
     old_A_data = A.data.copy()
-    A.set_num_problems(nproblems)
+    #A.set_num_problems(nproblems)
     # TODO make this random.
-    A.data = np.ones(A.data.shape)*old_A_data
+    #A.data = np.ones(A.data.shape)*old_A_data
 
     return A, b, c, 0.0
 

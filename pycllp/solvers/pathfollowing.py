@@ -19,6 +19,11 @@ MAX_ITER = 200
 
 
 class DensePathFollowingSolver(BaseSolver):
+    """
+    This solver is a port of the path following algorith originally
+    implemented by Vanderbei. It is for solving LP in the standard
+    form.
+    """
     name = 'dense_path_following'
 
     def init(self, A, b, c, f=0.0):
@@ -89,7 +94,7 @@ class DensePathFollowingSolver(BaseSolver):
             """---------------------------------------------------------------
                      |           Primal          |            Dual           |
               Iter   |  Obj Value       Infeas   |  Obj Value       Infeas   |
-            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+            - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
             """)
 
         # 	Iteration.

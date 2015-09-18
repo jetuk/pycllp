@@ -10,8 +10,8 @@ def vanderbei_2_9():
     kA = np.array([0, 2, 5, 8],)
     A = csc_matrix((A, iA, kA)).tocoo()
 
-    b = np.array([-5, -np.inf, -np.inf], dtype=np.float)
-    d = np.array([np.inf, 4, 7], dtype=np.float)
+    a = np.array([-5, -np.inf, -np.inf], dtype=np.float)
+    b = np.array([np.inf, 4, 7], dtype=np.float)
 
     c = np.array([2, 3, 4], dtype=np.float)
 
@@ -21,7 +21,7 @@ def vanderbei_2_9():
 
     xopt = np.array([1.5, 2.5, 0], dtype=np.float)
 
-    return SparseMatrix(matrix=A), b, c, d, l, u, f, xopt
+    return SparseMatrix(matrix=A), b, c, a, l, u, f, xopt
 
 
 def vanderbei_2_10():
@@ -31,8 +31,8 @@ def vanderbei_2_10():
     kA = np.array([0, 1, 2, 3, 4],)
     A = csc_matrix((A, iA, kA))
 
+    a = np.array([1, ], dtype=np.float)
     b = np.array([1, ], dtype=np.float)
-    d = np.array([1, ], dtype=np.float)
 
     c = np.array([6, 8, 5, 9], dtype=np.float)
 
@@ -42,4 +42,4 @@ def vanderbei_2_10():
 
     xopt = np.array([0, 0, 0, 1], dtype=np.float)
 
-    return SparseMatrix(matrix=A), b, c, d, l, u, f, xopt
+    return SparseMatrix(matrix=A), b, c, a, l, u, f, xopt

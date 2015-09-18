@@ -531,7 +531,7 @@ class StandardLP(object):
 
 class GeneralLP(StandardLP):
     """ Container for a general linear programme. """
-    def __init__(self, A=None, b=None, c=None, d=None, l=None, u=None, f=None):
+    def __init__(self, A=None, b=None, c=None, a=None, l=None, u=None, f=None):
         """
         Intialise with following general form,
 
@@ -541,7 +541,7 @@ class GeneralLP(StandardLP):
 
         subject to:
         .. math:
-            b <= Ax <= d
+            a <= Ax <= b
             l <=  x <= u
 
         :param A: SparseMatrix that defines constraint coefficients.
@@ -555,13 +555,13 @@ class GeneralLP(StandardLP):
         if A is not None:
             nprb = self.nproblems
 
-            if d is not None:
-                self.d = np.array(d)
-                if self.d.ndim == 1:
-                    self.d =  np.array(np.dot(np.ones((nprb,1)),np.matrix(self.d)))
+            if a is not None:
+                self.a = np.array(a)
+                if self.a.ndim == 1:
+                    self.a =  np.array(np.dot(np.ones((nprb,1)),np.matrix(self.a)))
             else:
                 # Default to infinite bounds on the rows
-                self.d = np.ones(self.b.shape)*np.inf
+                self.a = np.ones(self.b.shape)*np.inf
 
             if l is not None:
                 self.l = np.array(l)
@@ -579,7 +579,7 @@ class GeneralLP(StandardLP):
 
         else:
             # A not provided, create empty arrays
-            self.d = np.array([[]])
+            self.a = np.array([[]])
             self.l = np.array([[]])
             self.u = np.array([[]])
 
@@ -597,13 +597,13 @@ class GeneralLP(StandardLP):
         Set bound data to the b and r arrays. Do not use this directly, add rows
         using add_row.
         """
-        super(GeneralLP, self)._set_bound(row, lower_bound)
-        if row >= self.d.shape[1]:
+        super(GeneralLP, self)._set_bound(row, upper_bound)
+        if row >= self.a.shape[1]:
             # New row beyond length of existing array
-            N = row - self.d.shape[1] + 1
-            self.d = np.pad(self.d, ((0, 0), (0, N)), mode='constant')
-            #self.d.resize((self.d.shape[0], row+1))
-        self.d[:,row] = upper_bound
+            N = row - self.a.shape[1] + 1
+            self.a = np.pad(self.a, ((0, 0), (0, N)), mode='constant')
+            #self.a.resize((self.a.shape[0], row+1))
+        self.a[:,row] = lower_bound
 
     def add_row(self, cols, value, lower_bound, upper_bound):
         """
@@ -633,8 +633,8 @@ class GeneralLP(StandardLP):
 
         :param row: row index
         """
-        cols, value, lb = StandardLP.get_row(self, row)
-        ub = self.d[:, row]
+        cols, value, ub = StandardLP.get_row(self, row)
+        lb = self.a[:, row]
         return cols, value, lb, ub
 
     def set_col_bounds(self, col, lower_bound=0.0, upper_bound=np.inf):
@@ -680,7 +680,7 @@ class GeneralLP(StandardLP):
         zero filled.
         """
         super(GeneralLP, self).set_num_problems(nproblem)
-        self.d = np.pad(self.d, ((0, N), (0, 0)), mode='constant')
+        self.a = np.pad(self.a, ((0, N), (0, 0)), mode='constant')
         self.l = np.pad(self.l, ((0, N), (0, 0)), mode='constant')
         self.u = np.pad(self.u, (0, N), mode='constant')
 
@@ -691,7 +691,7 @@ class GeneralLP(StandardLP):
 
         b = self.b.copy()
         c = self.c.copy()
-        d = self.d.copy()
+        a = self.a.copy()
         l = self.l.copy()
         u = self.u.copy()
         f = self.f.copy()
@@ -715,20 +715,19 @@ class GeneralLP(StandardLP):
         for iprb in range(self.nproblems):
             Al = np.squeeze(self.A.tocsc(iprb).dot(l[iprb, :].T))
             b[iprb, :] = b[iprb, :] - Al
-            d[iprb, :] = d[iprb, :] - Al
+            a[iprb, :] = a[iprb, :] - Al
             f[iprb] = f[iprb] + np.squeeze(np.dot(c[iprb, :], l[iprb, :].T))
 
         # Convert equality constraints to a pair of inequalities
         # Create A matrix has a double copy of self.A
         # first with -ve coefficients, and then as is
-        A = SparseMatrix()
-        A.set_num_problems(self.nproblems)
+        A = SparseMatrix()       
         for row, cols, value in self.A.rows:
             A.add_row(cols, -value)
         for row, cols, value in self.A.rows:
             A.add_row(cols, value)
 
-        b = np.c_[-b, d]
+        b = np.c_[-a, b]
         #b[:,:self.m] *= -1
         #b[:,self.m:] += r
 
