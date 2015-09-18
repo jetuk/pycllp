@@ -163,6 +163,9 @@ class TestStandardLP(object):
         assert lp.ncols == 4
         assert lp.nnzeros == 3
         assert lp.nproblems == 1
+        # Check internal array consistency
+        assert lp.c.shape[1] == 4
+        assert lp.b.shape[1] == 1
         assert_allclose(lp.b, [[1.0]])
 
         lp.set_bound(0, 2.0)

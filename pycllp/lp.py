@@ -413,12 +413,18 @@ class StandardLP(object):
         """
         Add row to the problem.
 
+        Any new columns will be initialised with an objective function of zero.
+
         :param cols: iterable of column indices
         :param value: data for the A matrix for the columns
         :param bound: maximum value for this row
         """
         row = self.A.add_row(cols, value)
         self._set_bound(row, bound)
+        # Check the objective array is now the correct size
+        if self.c.shape[1] < self.A.ncols:
+            for col in range(self.c.shape[1], self.A.ncols):
+                self._set_objective(col, 0.0)
         return row
 
     def get_row(self, row):
@@ -721,7 +727,7 @@ class GeneralLP(StandardLP):
         # Convert equality constraints to a pair of inequalities
         # Create A matrix has a double copy of self.A
         # first with -ve coefficients, and then as is
-        A = SparseMatrix()       
+        A = SparseMatrix()
         for row, cols, value in self.A.rows:
             A.add_row(cols, -value)
         for row, cols, value in self.A.rows:

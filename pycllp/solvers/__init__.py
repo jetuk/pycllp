@@ -58,7 +58,7 @@ class BaseGeneralSolver(BaseSolver):
 
         self.u = u
         if self.u.ndim == 1:
-            self.u = np.reshape(u, (1, len(d)))            
+            self.u = np.reshape(u, (1, len(d)))
 
 # register solvers
 try:

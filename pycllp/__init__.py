@@ -1,3 +1,5 @@
+import lp
+import solvers
 
 HEADER = 0
 NAME = 1
