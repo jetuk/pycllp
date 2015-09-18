@@ -16,7 +16,11 @@ MAX_ITER = 200
 class ClHSDSolver(BaseCSCSolver):
     name = 'clhsd'
 
-    def __init__(self, ctx, queue):
+    def __init__(self, ctx=None, queue=None):
+        if ctx is None:
+            ctx = cl.create_some_context()
+        if queue is None:
+            queue = cl.CommandQueue(ctx)
         self.ctx = ctx
         self.queue = queue
         self.total_buffer_size = 0
