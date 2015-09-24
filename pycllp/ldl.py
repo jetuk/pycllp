@@ -92,33 +92,3 @@ def ldl_forward_backward(A, b):
         x[i] = (x[i] - np.dot(x[i+1:], L.T[i, i+1:])) / 1.0
 
     return x
-
-
-if __name__ == '__main__':
-    # Size of the matrix
-    m, n = 100, 80
-    A = np.random.rand(m, n)
-    b = np.random.rand(m)
-    # Create a positive definite matrix
-    A = np.dot(A, A.T) + np.eye(m)*m
-    # Perform decompositions
-    np_chlsky = np.linalg.cholesky(A)
-    py_chlsky = cholesky(A)
-    py_ldl_D, py_ldl_L = ldl(A)
-
-    # Check implementation of Cholesky above is the same as numpy
-    np.testing.assert_allclose(np_chlsky, py_chlsky)
-    # Check LDL decomposition multiples back to A
-    np.testing.assert_allclose(A, (py_ldl_L*py_ldl_D).dot(py_ldl_L.T))
-
-    # Solve the system Ax = b
-    np_x = np.linalg.solve(A, b)
-    # Using python Cholesky decomposition ...
-    py_chlsky_x = forward_backward(py_chlsky, py_chlsky.T, b)
-    np.testing.assert_allclose(np_x, py_chlsky_x)
-    # ... and LDL decomposition
-    py_ldl_x = forward_backward(py_ldl_L*py_ldl_D, py_ldl_L.T, b)
-    np.testing.assert_allclose(np_x, py_ldl_x)
-
-    py_ldl_x = ldl_forward_backward(A, b)
-    np.testing.assert_allclose(np_x, py_ldl_x)
