@@ -62,6 +62,7 @@ class BaseGeneralSolver(BaseSolver):
 
 # register solvers
 from .cython import CyHSDSolver
-from .hsd import HSDSolver
+#from .hsd import HSDSolver
 from .cl import ClHSDSolver
 from .pathfollowing import DensePathFollowingSolver
+from .normal_eqns import DensePrimalNormalSolver

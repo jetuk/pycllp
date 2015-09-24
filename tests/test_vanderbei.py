@@ -13,7 +13,7 @@ from functools import partial
 
 all_problems = inspect.getmembers(vanderbei_problems, inspect.isfunction)
 # Create perturbed problems
-all_problems = [(pn, partial(perturb_problem, pf, 1024)) for pn, pf in all_problems]
+all_problems = [(pn, partial(perturb_problem, pf, 32)) for pn, pf in all_problems]
 
 @pytest.mark.noncl
 @pytest.mark.parametrize("name,solver_cls,problem_name,problem_func",

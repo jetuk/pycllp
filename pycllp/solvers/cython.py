@@ -22,7 +22,7 @@ class CyHSDSolver(BaseCSCSolver):
 
         for i in range(nlp):
             status[i] = hsd_solver(m, n, len(self.Ai),
-                            self.Ai, self.Ak, self.A[i,:],
+                            self.Ai, self.Ak, self.A[0,:],
                             b[i,:], self.c[i,:],
                             self.f[i], x[i,:], y[i,:], w[i,:], z[i,:],
                             verbose)
