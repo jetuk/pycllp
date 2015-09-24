@@ -14,7 +14,7 @@ def m():
 
 @pytest.fixture
 def n():
-    return 100
+    return 80
 
 
 @pytest.fixture
