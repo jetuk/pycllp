@@ -5,7 +5,7 @@ import numpy as np
 import pyopencl as cl
 import os
 from ..linalg import smx, atnum
-from ..ldlt import LDLTFAC
+from ..sparse_ldl import LDLTFAC
 from . import BaseCSCSolver
 import time
 
