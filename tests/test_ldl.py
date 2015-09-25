@@ -105,8 +105,8 @@ def test_cl_ldl(AA):
     A_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=AA)
     # Create and compile kernel
     prg = cl_krnl_ldl(ctx)
-    L_g = cl.Buffer(ctx, mf.WRITE_ONLY, L.nbytes)
-    D_g = cl.Buffer(ctx, mf.WRITE_ONLY, D.nbytes)
+    L_g = cl.Buffer(ctx, mf.READ_WRITE, L.nbytes)
+    D_g = cl.Buffer(ctx, mf.READ_WRITE, D.nbytes)
 
     prg.ldl(queue, (cl_size,), None, np.int32(m), np.int32(n), A_g, L_g, D_g)
 
@@ -133,3 +133,57 @@ def test_solve_primal_normal(m, n, b):
     py_dy = solve_primal_normal(A, x, z, y, w, b)
 
     np.testing.assert_allclose(np_dy, py_dy)
+
+
+@pytest.mark.cl
+def test_cl_solve_primal_normal(m, n, cl_size):
+    """ Test the CL implentation of LDL algorithm.
+
+    This tests a series (cl_size) of matrices against the Python implementation.
+    """
+    from pycllp.ldl import solve_primal_normal
+    # Random system matrix (not positive definite by itself)
+    A = np.random.rand(m, n).astype(dtype=np.float32)
+    x = np.random.rand(n, cl_size).astype(dtype=A.dtype)
+    z = np.random.rand(n, cl_size).astype(dtype=A.dtype)
+    y = np.random.rand(m, cl_size).astype(dtype=A.dtype)
+    w = np.random.rand(m, cl_size).astype(dtype=A.dtype)
+    b = np.random.rand(m, cl_size).astype(dtype=A.dtype)
+
+    # First calculate the Python based values for each matrix in AA
+    py_dy = np.empty((m, cl_size)).astype(dtype=A.dtype)
+    for i in range(cl_size):
+        py_dy[:, i] = solve_primal_normal(A, x[:, i], z[:, i], y[:, i], w[:, i], b[:, i])
+
+    # Setup CL context
+    import pyopencl as cl
+    from pycllp.ldl import cl_krnl_ldl
+    ctx = cl.create_some_context()
+    queue = cl.CommandQueue(ctx)
+
+    # Work/Result arrays
+    L = np.empty(cl_size*m*(m+1)/2, dtype=np.float32)
+    D = np.empty(cl_size*m, dtype=np.float32)
+    dy = np.empty(cl_size*m, dtype=np.float32)
+
+    mf = cl.mem_flags
+    A_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=A)
+    x_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=x)
+    z_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=z)
+    y_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=y)
+    w_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=w)
+    b_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=b)
+    # Create and compile kernel
+    prg = cl_krnl_ldl(ctx)
+    L_g = cl.Buffer(ctx, mf.READ_WRITE, L.nbytes)
+    D_g = cl.Buffer(ctx, mf.READ_WRITE, D.nbytes)
+    dy_g = cl.Buffer(ctx, mf.READ_WRITE, dy.nbytes)
+
+    prg.solve_primal_normal(queue, (cl_size,), None, np.int32(m), np.int32(n),
+                            A_g, x_g, z_g, y_g, w_g, b_g, L_g, D_g, dy_g)
+
+    cl.enqueue_copy(queue, dy, dy_g)
+
+    # Compare each matrix decomposition with the python equivalent.
+    for i in range(cl_size):
+        np.testing.assert_allclose(py_dy[:, i], dy[i::cl_size], rtol=1e-3, atol=1e-3)

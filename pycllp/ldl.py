@@ -127,12 +127,12 @@ def solve_primal_normal(A, x, z, y, w, b):
         Research & Management Science 196, DOI 10.1007/978-1-4614-7630-6_19
     """
     m = A.shape[0]
-    dy = np.zeros(m)
-    D = np.zeros(m)
-    L = np.zeros((m, m))
+    dy = np.zeros(m, dtype=A.dtype)
+    D = np.zeros(m, dtype=A.dtype)
+    L = np.zeros((m, m), dtype=A.dtype)
 
     def Aij(i, j):
-        a = 0.0
+        a = np.array(0.0, dtype=A.dtype)
         for k in range(A.shape[1]):
             a += A[i, k]*x[k]*A[j, k]/z[k]
         if i == j:
@@ -150,6 +150,6 @@ def solve_primal_normal(A, x, z, y, w, b):
 
     # Backward substitution
     for i in reversed(range(m)):
-        dy[i] = (dy[i] - np.dot(dy[i+1:], L.T[i, i+1:])) / 1.0
+        dy[i] = dy[i] - np.dot(dy[i+1:], L.T[i, i+1:])
 
     return dy
