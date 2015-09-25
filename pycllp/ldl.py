@@ -87,8 +87,8 @@ def ldl_forward_backward(A, b):
 
     This function is a prototype for a OpenCL version of this algorithm. Instead
     of calculating the L and D prior to the forward-backward substitution the
-    L matrix is calculated on the fly. During the forward substition, it is then
-    reused during the backward substituion.
+    L matrix is calculated on the fly. During the forward substitution, it is then
+    reused during the backward substitution.
     """
     x = np.zeros(A.shape[0])
     D = np.zeros(A.shape[0])
@@ -108,3 +108,48 @@ def ldl_forward_backward(A, b):
         x[i] = (x[i] - np.dot(x[i+1:], L.T[i, i+1:])) / 1.0
 
     return x
+
+
+def solve_primal_normal(A, x, z, y, w, b):
+    """
+    Solve the system of normal equations in primal form,
+        -(W/Y + A(X/Z)A`)dy = b
+
+    This function is a prototype of an OpenCL version of this algorith. It uses
+    the same method as ldl_forward_backward() to perform forward-backward
+    substitution on the fly.
+
+    The left side of the system is also computed as required. The notation in this
+    context is that X, Z, Y, W and diagonal matrices of their respective vectors.
+
+    Reference,
+        Vanderbei, R.J., Linear Programming, International Series in Operations
+        Research & Management Science 196, DOI 10.1007/978-1-4614-7630-6_19
+    """
+    m = A.shape[0]
+    dy = np.zeros(m)
+    D = np.zeros(m)
+    L = np.zeros((m, m))
+
+    def Aij(i, j):
+        a = 0.0
+        for k in range(A.shape[1]):
+            a += A[i, k]*x[k]*A[j, k]/z[k]
+        if i == j:
+            a += w[i]/y[i]
+        return -a
+
+    # Forward substitution
+    for i in range(m):
+        for j in range(i):
+            L[i, j] = Aij(i, j) - np.sum([L[i, k]*L[j, k]*D[k] for k in range(j)])
+            L[i, j] /= D[j]
+        D[i] = Aij(i, i) - np.sum([D[k]*L[i, k]**2 for k in range(i)])
+        L[i, i] = 1.0
+        dy[i] = (b[i] - np.dot(dy[:i], L[i, :i]*D[:i])) / D[i]
+
+    # Backward substitution
+    for i in reversed(range(m)):
+        dy[i] = (dy[i] - np.dot(dy[i+1:], L.T[i, i+1:])) / 1.0
+
+    return dy

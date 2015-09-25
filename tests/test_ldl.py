@@ -117,3 +117,19 @@ def test_cl_ldl(AA):
     for i in range(cl_size):
         np.testing.assert_allclose(py_ldl_D[..., i], D[i::cl_size], rtol=1e-6, atol=1e-7)
         np.testing.assert_allclose(py_ldl_L[..., i][np.tril_indices(m)], L[i::cl_size], rtol=1e-6, atol=1e-7)
+
+
+def test_solve_primal_normal(m, n, b):
+    from pycllp.ldl import solve_primal_normal
+    # Random system matrix (not positive definite by itself)
+    A = np.random.rand(m, n)
+    x = np.random.rand(n)
+    z = np.random.rand(n)
+    y = np.random.rand(m)
+    w = np.random.rand(m)
+
+    np_dy = np.linalg.solve(-(np.eye(m)*w/y + (A*x/z).dot(A.T)), b)
+
+    py_dy = solve_primal_normal(A, x, z, y, w, b)
+
+    np.testing.assert_allclose(np_dy, py_dy)
