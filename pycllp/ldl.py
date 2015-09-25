@@ -34,8 +34,8 @@ def ldl(A,):
     Reference,
         https://en.wikipedia.org/wiki/Cholesky_decomposition
     """
-    D = np.zeros(A.shape[0])
-    L = np.zeros(A.shape)
+    D = np.zeros(A.shape[0], dtype=A.dtype)
+    L = np.zeros(A.shape, dtype=A.dtype)
 
     for i in range(A.shape[0]):
         for j in range(i):
@@ -45,6 +45,22 @@ def ldl(A,):
         L[i, i] = 1.0
 
     return D, L
+
+
+def cl_krnl_ldl(context, ):
+    """
+    Returns a pyopencl.Program that can perform an LDL decomposition on a
+    global dense A matrix.
+
+    This function will compile, but not build the kernel.
+    Use pyopencl.link_program() to link multiple Program objects in the
+    calling code.
+    """
+    import pyopencl as cl
+    from cl_tools import cl_program_from_file
+    p = cl_program_from_file(context, 'ldl.cl')
+    p.build()
+    return p
 
 
 def forward_backward(L, U, b):
