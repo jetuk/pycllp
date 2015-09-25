@@ -90,10 +90,32 @@ float AXZAt_ii(int i, int m, int n, int size, int gid, __global float* A,
   return a;
 }
 
+float primal_normal_rhs_i(int i, int m, int n, int size, int gid, __global float* A,
+  __global float* x, __global float* z, __global float* y, __global float* w,
+  __global float* b,  __global float* c, float mu) {
+  /* Compute the ith element of the right-hand side vector of the normal equations
+
+    RHS = b - Ax - mu/Y - (AX/Z)*(c - A'y + mu/X)
+  */
+  float rhs = b[i*size+gid] - mu/y[i*size+gid];
+  float Aty;
+  int j, k;
+
+  for (j=0; j<n; j++) {
+    Aty = 0.0;
+    for (k=0; k<m; k++) {
+      Aty += A[k*n+j]*y[k*size+gid];
+    }
+    rhs += -A[i*n+j]*x[j*size+gid];
+    rhs += -A[i*n+j]*x[j*size+gid]*(c[j*size+gid] - Aty + mu/x[j*size+gid])/z[j*size+gid];
+  }
+  return rhs;
+}
 
 __kernel void solve_primal_normal(int m, int n, __global float* A,
   __global float* x, __global float* z, __global float* y, __global float* w,
-  __global float* b, __global float* L, __global float* D, __global float* dy) {
+  __global float* b, __global float* c, float mu,
+  __global float* L, __global float* D, __global float* dy) {
   /* Solve the system of normal equations in primal form,
       -(W/Y + A(X/Z)A')dy = b
 
@@ -135,7 +157,7 @@ __kernel void solve_primal_normal(int m, int n, __global float* A,
     L[tri_index(i, i, gsize, gid)] = 1.0;
 
     // Forward substitution
-    dy[i*gsize+gid] = b[i*gsize+gid];
+    dy[i*gsize+gid] = primal_normal_rhs_i(i, m, n, gsize, gid, A, x, z, y, w, b, c, mu);
     for (j=0; j<i; j++) {
       dy[i*gsize+gid] -= dy[j*gsize+gid]*L[tri_index(i, j, gsize, gid)]*D[j*gsize+gid];
     }

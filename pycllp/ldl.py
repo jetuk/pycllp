@@ -110,7 +110,7 @@ def ldl_forward_backward(A, b):
     return x
 
 
-def solve_primal_normal(A, x, z, y, w, b):
+def solve_primal_normal(A, x, z, y, w, b, c, mu):
     """
     Solve the system of normal equations in primal form,
         -(W/Y + A(X/Z)A`)dy = b
@@ -139,6 +139,12 @@ def solve_primal_normal(A, x, z, y, w, b):
             a += w[i]/y[i]
         return -a
 
+    def RHSi(i):
+        rhs = np.array(b[i] - mu/y[i], dtype=A.dtype)
+        for j in range(A.shape[1]):
+            rhs += -A[i, j]*x[j] - A[i, j]*x[j]*(c[j] - np.dot(A.T[j, :], y) + mu/x[j])/z[j]
+        return rhs
+
     # Forward substitution
     for i in range(m):
         for j in range(i):
@@ -146,7 +152,7 @@ def solve_primal_normal(A, x, z, y, w, b):
             L[i, j] /= D[j]
         D[i] = Aij(i, i) - np.sum([D[k]*L[i, k]**2 for k in range(i)])
         L[i, i] = 1.0
-        dy[i] = (b[i] - np.dot(dy[:i], L[i, :i]*D[:i])) / D[i]
+        dy[i] = (RHSi(i) - np.dot(dy[:i], L[i, :i]*D[:i])) / D[i]
 
     # Backward substitution
     for i in reversed(range(m)):

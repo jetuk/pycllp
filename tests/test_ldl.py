@@ -43,6 +43,11 @@ def b(m):
     return np.random.rand(m)
 
 
+@pytest.fixture
+def c(n):
+    return np.random.rand(n)
+
+
 def test_cholesky(A):
     # Perform decompositions
     np_chlsky = np.linalg.cholesky(A)
@@ -119,7 +124,7 @@ def test_cl_ldl(AA):
         np.testing.assert_allclose(py_ldl_L[..., i][np.tril_indices(m)], L[i::cl_size], rtol=1e-6, atol=1e-7)
 
 
-def test_solve_primal_normal(m, n, b):
+def test_solve_primal_normal(m, n, b, c):
     from pycllp.ldl import solve_primal_normal
     # Random system matrix (not positive definite by itself)
     A = np.random.rand(m, n)
@@ -127,10 +132,12 @@ def test_solve_primal_normal(m, n, b):
     z = np.random.rand(n)
     y = np.random.rand(m)
     w = np.random.rand(m)
+    mu = 1.0
+    bb = b - A.dot(x) - mu/y - (A*x/z).dot(c - A.T.dot(y) + mu/x)
 
-    np_dy = np.linalg.solve(-(np.eye(m)*w/y + (A*x/z).dot(A.T)), b)
+    np_dy = np.linalg.solve(-(np.eye(m)*w/y + (A*x/z).dot(A.T)), bb)
 
-    py_dy = solve_primal_normal(A, x, z, y, w, b)
+    py_dy = solve_primal_normal(A, x, z, y, w, b, c, mu)
 
     np.testing.assert_allclose(np_dy, py_dy)
 
@@ -149,11 +156,12 @@ def test_cl_solve_primal_normal(m, n, cl_size):
     y = np.random.rand(m, cl_size).astype(dtype=A.dtype)
     w = np.random.rand(m, cl_size).astype(dtype=A.dtype)
     b = np.random.rand(m, cl_size).astype(dtype=A.dtype)
-
+    c = np.random.rand(n, cl_size).astype(dtype=A.dtype)
+    mu = 1.0
     # First calculate the Python based values for each matrix in AA
     py_dy = np.empty((m, cl_size)).astype(dtype=A.dtype)
     for i in range(cl_size):
-        py_dy[:, i] = solve_primal_normal(A, x[:, i], z[:, i], y[:, i], w[:, i], b[:, i])
+        py_dy[:, i] = solve_primal_normal(A, x[:, i], z[:, i], y[:, i], w[:, i], b[:, i], c[:, i], mu)
 
     # Setup CL context
     import pyopencl as cl
@@ -173,6 +181,7 @@ def test_cl_solve_primal_normal(m, n, cl_size):
     y_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=y)
     w_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=w)
     b_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=b)
+    c_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=c)
     # Create and compile kernel
     prg = cl_krnl_ldl(ctx)
     L_g = cl.Buffer(ctx, mf.READ_WRITE, L.nbytes)
@@ -180,10 +189,10 @@ def test_cl_solve_primal_normal(m, n, cl_size):
     dy_g = cl.Buffer(ctx, mf.READ_WRITE, dy.nbytes)
 
     prg.solve_primal_normal(queue, (cl_size,), None, np.int32(m), np.int32(n),
-                            A_g, x_g, z_g, y_g, w_g, b_g, L_g, D_g, dy_g)
+                            A_g, x_g, z_g, y_g, w_g, b_g, c_g, np.float32(mu), L_g, D_g, dy_g)
 
     cl.enqueue_copy(queue, dy, dy_g)
 
-    # Compare each matrix decomposition with the python equivalent.
+    # Compare each solution vector, dy, with the python equivalent.
     for i in range(cl_size):
-        np.testing.assert_allclose(py_dy[:, i], dy[i::cl_size], rtol=1e-3, atol=1e-3)
+        np.testing.assert_allclose(py_dy[:, i], dy[i::cl_size], rtol=1e-2, atol=1e-2)
