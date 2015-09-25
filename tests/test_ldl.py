@@ -18,10 +18,24 @@ def n():
 
 
 @pytest.fixture
+def cl_size():
+    return 32
+
+
+@pytest.fixture
 def A(m, n):
     """A random positive definite matrix"""
     A = np.random.rand(m, n)
     return np.dot(A, A.T) + np.eye(m)*m
+
+
+@pytest.fixture
+def AA(m, n, cl_size):
+    """cl_size random positive definite matrices"""
+    AA = np.empty((m, m, cl_size))
+    for i in range(cl_size):
+        AA[..., i] = A(m, n)
+    return AA
 
 
 @pytest.fixture
@@ -63,33 +77,43 @@ def test_solve_ldl(A, b):
 
 
 @pytest.mark.cl
-def test_cl_ldl(A):
-    # Convert to single float
-    A = A.astype(np.float32)
-    # First calculate the Pyhton based values
-    py_ldl_D, py_ldl_L = ldl(A)
+def test_cl_ldl(AA):
+    """ Test the CL implentation of LDL algorithm.
 
+    This tests a series (cl_size) of matrices against the Python implementation.
+    """
+    # Convert to single float
+    AA = AA.astype(np.float32)
+    # First calculate the Python based values for each matrix in AA
+    py_ldl_D = np.empty((AA.shape[0], AA.shape[2]), dtype=AA.dtype)
+    py_ldl_L = np.empty(AA.shape, dtype=AA.dtype)
+    for i in range(AA.shape[2]):
+        py_ldl_D[..., i], py_ldl_L[..., i] = ldl(AA[..., i])
+
+    # Setup CL context
     import pyopencl as cl
     from pycllp.ldl import cl_krnl_ldl
     ctx = cl.create_some_context()
     queue = cl.CommandQueue(ctx)
 
     # Result arrays
-    m = A.shape[0]
-    L = np.empty(m*(m+1)/2, dtype=np.float32)
-    D = np.empty(m, dtype=np.float32)
+    m, n, cl_size = AA.shape
+    L = np.empty(cl_size*m*(m+1)/2, dtype=np.float32)
+    D = np.empty(cl_size*m, dtype=np.float32)
 
     mf = cl.mem_flags
-    A_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=A)
+    A_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=AA)
     # Create and compile kernel
     prg = cl_krnl_ldl(ctx)
     L_g = cl.Buffer(ctx, mf.WRITE_ONLY, L.nbytes)
     D_g = cl.Buffer(ctx, mf.WRITE_ONLY, D.nbytes)
 
-    prg.ldl(queue, (1,), None, np.int32(A.shape[0]), np.int32(A.shape[1]), A_g, L_g, D_g)
+    prg.ldl(queue, (cl_size,), None, np.int32(m), np.int32(n), A_g, L_g, D_g)
 
     cl.enqueue_copy(queue, L, L_g)
     cl.enqueue_copy(queue, D, D_g)
 
-    np.testing.assert_allclose(py_ldl_D, D, rtol=1e-6, atol=1e-7)
-    np.testing.assert_allclose(py_ldl_L[np.tril_indices(m)], L, rtol=1e-6, atol=1e-7)
+    # Compare each matrix decomposition with the python equivalent.
+    for i in range(cl_size):
+        np.testing.assert_allclose(py_ldl_D[..., i], D[i::cl_size], rtol=1e-6, atol=1e-7)
+        np.testing.assert_allclose(py_ldl_L[..., i][np.tril_indices(m)], L[i::cl_size], rtol=1e-6, atol=1e-7)
