@@ -26,27 +26,27 @@ class DensePathFollowingSolver(BaseSolver):
     """
     name = 'dense_path_following'
 
-    def init(self, A, b, c, f=0.0):
-        BaseSolver.init(self, A, b, c, f=f)
+    def init(self, lp, verbose=0):
+        pass
 
-    def solve(self, verbose=0):
-        n, nlp = self.n, self.nlp
+    def solve(self, lp, verbose=0):
+        n, nlp = lp.ncols, lp.nproblems
         self.x = np.empty((nlp, n))
         self.status = np.empty(nlp, dtype=np.int)
 
         for i in range(nlp):
-            self._solve(i, verbose=verbose)
+            self._solve(lp, i, verbose=verbose)
 
         return self.status
 
-    def _solve(self, ilp, verbose=0):
-        n = self.n
-        m = self.m
+    def _solve(self, lp, ilp, verbose=0):
+        n = lp.ncols
+        m = lp.nrows
         m2 = m+n
-        A = self.A.todense(problem=ilp)
-        b = self.b[ilp, :]
-        c = self.c[ilp, :]
-        f = self.f[ilp]
+        A = np.array(lp.A.todense(problem=ilp))
+        b = lp.b[ilp, :]
+        c = lp.c[ilp, :]
+        f = lp.f[ilp]
 
         normr, norms = 0.0, 0.0  # infeasibilites
         gamma, delta, mu, theta = 0.0, 0.0, 0.0, 0.0  # parameters
@@ -89,7 +89,10 @@ class DensePathFollowingSolver(BaseSolver):
 
         # 	Display Banner.
         if verbose > 0:
-            print("m = {:d},n = {:d},nz = {:d}".format(m, n, self.A.nnzeros))
+            print(A)
+            print(b)
+            print(c)
+            print("m = {:d},n = {:d},nz = {:d}".format(m, n, lp.A.nnzeros))
             print(
             """---------------------------------------------------------------
                      |           Primal          |            Dual           |

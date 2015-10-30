@@ -5,7 +5,7 @@ Test of the LDL implementations provided in pycllp.ldl
 from pycllp.ldl import cholesky, ldl, forward_backward, ldl_forward_backward
 import pytest
 import numpy as np
-
+DTYPE = np.float64
 
 @pytest.fixture
 def m():
@@ -88,7 +88,7 @@ def test_cl_ldl(AA):
     This tests a series (cl_size) of matrices against the Python implementation.
     """
     # Convert to single float
-    AA = AA.astype(np.float32)
+    AA = AA.astype(DTYPE)
     # First calculate the Python based values for each matrix in AA
     py_ldl_D = np.empty((AA.shape[0], AA.shape[2]), dtype=AA.dtype)
     py_ldl_L = np.empty(AA.shape, dtype=AA.dtype)
@@ -103,8 +103,8 @@ def test_cl_ldl(AA):
 
     # Result arrays
     m, n, cl_size = AA.shape
-    L = np.empty(cl_size*m*(m+1)/2, dtype=np.float32)
-    D = np.empty(cl_size*m, dtype=np.float32)
+    L = np.empty(cl_size*m*(m+1)/2, dtype=DTYPE)
+    D = np.empty(cl_size*m, dtype=DTYPE)
 
     mf = cl.mem_flags
     A_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=AA)
@@ -149,8 +149,9 @@ def test_cl_solve_primal_normal(m, n, cl_size):
     This tests a series (cl_size) of matrices against the Python implementation.
     """
     from pycllp.ldl import solve_primal_normal
+
     # Random system matrix (not positive definite by itself)
-    A = np.random.rand(m, n).astype(dtype=np.float32)
+    A = np.random.rand(m, n).astype(dtype=DTYPE)
     x = np.random.rand(n, cl_size).astype(dtype=A.dtype)
     z = np.random.rand(n, cl_size).astype(dtype=A.dtype)
     y = np.random.rand(m, cl_size).astype(dtype=A.dtype)
@@ -170,18 +171,18 @@ def test_cl_solve_primal_normal(m, n, cl_size):
     queue = cl.CommandQueue(ctx)
 
     # Work/Result arrays
-    L = np.empty(cl_size*m*(m+1)/2, dtype=np.float32)
-    D = np.empty(cl_size*m, dtype=np.float32)
-    dy = np.empty(cl_size*m, dtype=np.float32)
+    L = np.empty(cl_size*m*(m+1)/2, dtype=DTYPE)
+    D = np.empty(cl_size*m, dtype=DTYPE)
+    dy = np.empty(cl_size*m, dtype=DTYPE)
 
     mf = cl.mem_flags
     A_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=A)
-    x_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=x)
-    z_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=z)
-    y_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=y)
-    w_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=w)
-    b_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=b)
-    c_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=c)
+    x_g = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=x)
+    z_g = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=z)
+    y_g = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=y)
+    w_g = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=w)
+    b_g = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=b)
+    c_g = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=c)
     # Create and compile kernel
     prg = cl_krnl_ldl(ctx)
     L_g = cl.Buffer(ctx, mf.READ_WRITE, L.nbytes)
@@ -189,10 +190,10 @@ def test_cl_solve_primal_normal(m, n, cl_size):
     dy_g = cl.Buffer(ctx, mf.READ_WRITE, dy.nbytes)
 
     prg.solve_primal_normal(queue, (cl_size,), None, np.int32(m), np.int32(n),
-                            A_g, x_g, z_g, y_g, w_g, b_g, c_g, np.float32(mu), L_g, D_g, dy_g)
+                            A_g, x_g, z_g, y_g, w_g, b_g, c_g, DTYPE(mu), L_g, D_g, dy_g)
 
     cl.enqueue_copy(queue, dy, dy_g)
 
     # Compare each solution vector, dy, with the python equivalent.
     for i in range(cl_size):
-        np.testing.assert_allclose(py_dy[:, i], dy[i::cl_size], rtol=1e-2, atol=1e-2)
+        np.testing.assert_allclose(py_dy[:, i], dy[i::cl_size], rtol=1e-5, atol=1e-5)

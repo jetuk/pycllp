@@ -528,11 +528,11 @@ class StandardLP(object):
         lp.f = self.f.copy()
         return lp
 
-    def init(self, solver):
-        solver.init(self.A, self.b, self.c, self.f)
+    def init(self, solver, verbose=0):
+        solver.init(self, verbose=verbose)
 
     def solve(self, solver, verbose=0):
-        return solver.solve(verbose=verbose)
+        return solver.solve(self, verbose=verbose)
 
 
 class GeneralLP(StandardLP):

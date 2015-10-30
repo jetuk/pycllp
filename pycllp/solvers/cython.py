@@ -6,13 +6,10 @@ import numpy as np
 class CyHSDSolver(BaseCSCSolver):
     name = 'cyhsd'
 
-    def init(self, A, b, c, f=0.0):
-        BaseCSCSolver.init(self, A, b, c, f=f)
+    def solve(self, lp, verbose=0):
 
-    def solve(self, verbose=0):
-
-        m,n,nlp = self.m,self.n,self.nlp
-        b = np.nan_to_num(self.b)
+        m, n, nlp = lp.nrows, lp.ncols, lp.nproblems
+        b = np.nan_to_num(lp.b)
 
         x = np.empty((nlp,n))
         y = np.empty((nlp,m))
@@ -23,8 +20,8 @@ class CyHSDSolver(BaseCSCSolver):
         for i in range(nlp):
             status[i] = hsd_solver(m, n, len(self.Ai),
                             self.Ai, self.Ak, self.A[0,:],
-                            b[i,:], self.c[i,:],
-                            self.f[i], x[i,:], y[i,:], w[i,:], z[i,:],
+                            b[i,:], lp.c[i,:],
+                            lp.f[i], x[i,:], y[i,:], w[i,:], z[i,:],
                             verbose)
 
 

@@ -37,19 +37,22 @@ def random_problem(m, n, density, nproblems):
     Generate a random problem with m rows and n columns and nproblems.
     Sparse matrix with density generated using scipy.sparse.rand
     """
-    from scipy.sparse import rand
+    from scipy.sparse import rand, csc_matrix
     from pycllp.lp import SparseMatrix
 
     np.random.seed(0)
-    A = SparseMatrix(matrix=rand(m, n, density=density))
+
+    A = np.empty((m, n))
+    for i in range(m):
+        A[i, :] = rand(1, n, density=max(density, 3./n)).todense()
+
+    A = SparseMatrix(matrix=csc_matrix(A))
     m = A.nrows
     n = A.ncols
-    b = (0.5+np.random.rand(nproblems, m))
-    c = (0.5+np.random.rand(nproblems, n))
+    b = np.random.rand(nproblems, m)
+    c = np.random.rand(nproblems, n)
 
     # Create sparse matrix with scipy.sparse
-
-    old_A_data = A.data.copy()
     #A.set_num_problems(nproblems)
     # TODO make this random.
     #A.data = np.ones(A.data.shape)*old_A_data
@@ -75,12 +78,15 @@ def pytest_solver_parallel(name, solver_cls, solver_args, problem_func,
     solver = solver_cls(*solver_args)
     slp.init(solver)
     slp.solve(solver, verbose=0)
+    npblms = slp.nproblems
 
     pysolver = solver_registry[compare_with_solver]()
     slp.init(pysolver)
     slp.solve(pysolver, verbose=0)
-    ind = np.where(solver.status == 0)
-    np.testing.assert_almost_equal(solver.status==0, pysolver.status==0,)
-    np.testing.assert_almost_equal(
-                solver.x[ind, :],
-                pysolver.x[ind, :], decimal=2)
+    # Test that the optimal solutions are the same
+    np.testing.assert_equal(pysolver.status==0, solver.status==0)
+    for i in range(npblms):
+        if solver.status[i] == 0:
+            np.testing.assert_allclose(
+                    pysolver.x[i, :],
+                    solver.x[i, :], rtol=1e-3, atol=1e-3)

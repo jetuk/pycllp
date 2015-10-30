@@ -15,3 +15,15 @@ def cl_program_from_file(context, filename):
     Filename should be present in the CL_PATH folder.
     """
     return cl.Program(context, open(os.path.join(CL_PATH, filename)).read())
+
+
+def cl_program_from_files(context, filenames):
+    """
+    Returns a pyopencl.Program with the source from filename.
+
+    Filename should be present in the CL_PATH folder.
+    """
+    source = ''
+    for filename in filenames:
+        source += open(os.path.join(CL_PATH, filename)).read()
+    return cl.Program(context, source)

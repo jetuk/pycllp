@@ -17,27 +17,27 @@ class DensePrimalNormalSolver(BaseSolver):
     """
     name = 'dense_primal_normal'
 
-    def init(self, A, b, c, f=0.0):
-        BaseSolver.init(self, A, b, c, f=f)
+    def init(self, lp, verbose=0):
+        pass
 
-    def solve(self, verbose=0):
-        n, nlp = self.n, self.nlp
+    def solve(self, lp, verbose=0):
+        n, nlp = lp.ncols, lp.nproblems
         self.x = np.empty((nlp, n))
         self.status = np.empty(nlp, dtype=np.int)
 
         for i in range(nlp):
-            self._solve(i, verbose=verbose)
+            self._solve(lp, i, verbose=verbose)
 
         return self.status
 
-    def _solve(self, ilp, verbose=0):
-        n = self.n
-        m = self.m
+    def _solve(self, lp, ilp, verbose=0):
+        n = lp.ncols
+        m = lp.nrows
         m2 = m+n
-        A = np.array(self.A.todense(problem=ilp))
-        b = self.b[ilp, :]
-        c = self.c[ilp, :]
-        f = self.f[ilp]
+        A = np.array(lp.A.todense(problem=ilp))
+        b = lp.b[ilp, :]
+        c = lp.c[ilp, :]
+        f = lp.f[ilp]
 
         x = np.ones(n)
         z = np.ones(n)
@@ -61,6 +61,9 @@ class DensePrimalNormalSolver(BaseSolver):
             gamma = np.dot(z, x) + np.dot(w, y)
             mu = delta * gamma / (n+m)
 
+            if verbose > 0:
+                print("{:d} |rho|: {:8.1e}  |sigma| {:8.1e}  gamma: {:8.1e}".format(_iter, normr, norms, gamma))
+
             if normr < EPS and norms < EPS and gamma < EPS:
                 status = 0
                 break  # OPTIMAL
@@ -81,7 +84,7 @@ class DensePrimalNormalSolver(BaseSolver):
             try:
                 dy = np.squeeze(np.linalg.solve(-AA, bb))
             except np.linalg.LinAlgError:
-                status = 6
+                status = 2
                 break
             dx = (c - A.T.dot(y) + mu/x - A.T.dot(dy))*x/z
             dz = (mu - x*z - z*dx)/x

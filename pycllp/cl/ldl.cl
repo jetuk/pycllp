@@ -5,6 +5,9 @@ a system of linear equations, Ax = b, using forward-backward substition.
 
 
 */
+#ifndef real
+  #define real double
+#endif
 
 inline int tri_index(int i, int j, int size, int gid) {
   /* Returns the index in lower diagonal matrix stored in an array
@@ -30,8 +33,8 @@ inline int matrix_index(int i, int j, int n, int size, int gid) {
   return (i*n + j)*size + gid;
 }
 
-__kernel void ldl(int m, int n, __global float* A, __global float* L,
-                  __global float* D) {
+__kernel void ldl(int m, int n, __global real* A, __global real* L,
+                  __global real* D) {
   /* Peform an LDL decomposition of A and save the results in L and D
 
   L is a lower triangular matrix. Entires are stored such that the lth
@@ -60,11 +63,11 @@ __kernel void ldl(int m, int n, __global float* A, __global float* L,
 }
 
 
-float AXZAt_ij(int i, int j, int m, int n, int size, int gid, __global float* A,
-            __global float* x, __global float* z) {
+real AXZAt_ij(int i, int j, int m, int n, int size, int gid, __global real* A,
+            __global real* x, __global real* z) {
   /* Compute the (i, j) entry of matrix A(X/Z)A'
   */
-  float a = 0.0;
+  real a = 0.0;
   int k;
 
   for (k=0; k<n; k++) {
@@ -75,11 +78,11 @@ float AXZAt_ij(int i, int j, int m, int n, int size, int gid, __global float* A,
   return a;
 }
 
-float AXZAt_ii(int i, int m, int n, int size, int gid, __global float* A,
-            __global float* x, __global float* z) {
+real AXZAt_ii(int i, int m, int n, int size, int gid, __global real* A,
+            __global real* x, __global real* z) {
   /* Compute the (i, i) entry of matrix A(X/Z)A'
   */
-  float a = 0.0;
+  real a = 0.0;
   int k;
 
   for (k=0; k<n; k++) {
@@ -90,15 +93,15 @@ float AXZAt_ii(int i, int m, int n, int size, int gid, __global float* A,
   return a;
 }
 
-float primal_normal_rhs_i(int i, int m, int n, int size, int gid, __global float* A,
-  __global float* x, __global float* z, __global float* y, __global float* w,
-  __global float* b,  __global float* c, float mu) {
+real primal_normal_rhs_i(int i, int m, int n, int size, int gid, __global real* A,
+  __global real* x, __global real* z, __global real* y, __global real* w,
+  __global real* b,  __global real* c, real mu) {
   /* Compute the ith element of the right-hand side vector of the normal equations
 
     RHS = b - Ax - mu/Y - (AX/Z)*(c - A'y + mu/X)
   */
-  float rhs = b[i*size+gid] - mu/y[i*size+gid];
-  float Aty;
+  real rhs = b[i*size+gid] - mu/y[i*size+gid];
+  real Aty;
   int j, k;
 
   for (j=0; j<n; j++) {
@@ -112,10 +115,10 @@ float primal_normal_rhs_i(int i, int m, int n, int size, int gid, __global float
   return rhs;
 }
 
-__kernel void solve_primal_normal(int m, int n, __global float* A,
-  __global float* x, __global float* z, __global float* y, __global float* w,
-  __global float* b, __global float* c, float mu,
-  __global float* L, __global float* D, __global float* dy) {
+__kernel void solve_primal_normal(int m, int n, __global real* A,
+  __global real* x, __global real* z, __global real* y, __global real* w,
+  __global real* b, __global real* c, real mu,
+  __global real* L, __global real* D, __global real* dy) {
   /* Solve the system of normal equations in primal form,
       -(W/Y + A(X/Z)A')dy = b
 

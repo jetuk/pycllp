@@ -30,7 +30,7 @@ def small_problem():
     return SparseMatrix(matrix=A), b, c, 0.0
 
 
-def parallel_small_problem(N=1024):
+def parallel_small_problem(N=32):
     """
     Take small_problem and perturb randomly to generate N problems
     """
@@ -38,9 +38,6 @@ def parallel_small_problem(N=1024):
     np.random.seed(0)
     b = (0.5+np.random.rand(N, len(b)))*b
     c = (0.5+np.random.rand(N, len(c)))*c
-    old_A_data = A.data.copy()
-    A.set_num_problems(N)
-    A.data = np.ones(A.data.shape)*old_A_data
 
     return A, b, c, f
 
@@ -51,10 +48,9 @@ def test_noncl_solvers(name, solver_cls):
     pytest_solver(name, solver_cls, [])
 
 @pytest.mark.cl
-@pytest.mark.parametrize("device,name,solver_cls",
-    [(d,n,s) for d,(n,s) in product(devices, cl_solvers)])
-def test_cl_solvers(device, name, solver_cls):
-    ctx = cl.Context(devices=[device])
+@pytest.mark.parametrize("name,solver_cls", cl_solvers)
+def test_cl_solvers(name, solver_cls):
+    ctx = cl.create_some_context()
     queue = cl.CommandQueue(ctx)
     pytest_solver(name, solver_cls, [ctx, queue])
 
@@ -62,34 +58,34 @@ def pytest_solver(name, solver_cls, solver_args):
     lp = StandardLP(*small_problem())
 
     solver = solver_cls(*solver_args)
-    lp.init(solver)
+    lp.init(solver, verbose=2)
     status = lp.solve(solver, verbose=2)
 
 
     np.testing.assert_equal(solver.status, 0)
-    np.testing.assert_almost_equal(np.squeeze(solver.x), (  1.00997e-13,   1.22527e-12,   5.18790e+00),
-        decimal=5)
+    np.testing.assert_allclose(np.squeeze(solver.x), (1.00997e-13,   1.22527e-12,   5.18790e+00), rtol=1e-1, atol=1e-1)
+
 
 @pytest.mark.cl
-@pytest.mark.parametrize("device,name,solver_cls",
-    [(d,n,s) for d,(n,s) in product(devices, cl_solvers)])
-def test_cl_solvers_parallel(device, name, solver_cls):
+@pytest.mark.parametrize("name,solver_cls", cl_solvers)
+def test_cl_solvers_parallel(name, solver_cls):
     from pycllp.solvers import solver_registry
 
     args = parallel_small_problem()
     lp = StandardLP(*args)
-    ctx = cl.Context(devices=[device])
+    ctx = cl.create_some_context()
     queue = cl.CommandQueue(ctx)
+    cl_size = lp.nproblems
 
     solver = solver_cls(ctx, queue)
-    lp.init(solver)
-    lp.solve(solver)
+    lp.init(solver, verbose=0)
+    lp.solve(solver, verbose=0)
 
-    pysolver = solver_registry['cyhsd']()
+    pysolver = solver_registry['dense_primal_normal']()
     lp.init(pysolver)
-    lp.solve(pysolver)
+    lp.solve(pysolver, verbose=0)
 
-    np.testing.assert_almost_equal(solver.status, pysolver.status,)
-    np.testing.assert_almost_equal(
-                np.sum(solver.x,axis=1),
-                np.sum(pysolver.x,axis=1), decimal=2)
+    np.testing.assert_allclose(solver.status, pysolver.status,)
+    for i in range(cl_size):
+        np.testing.assert_allclose(pysolver.x[i, :], solver.x[i, ...],
+                                   rtol=1e-3, atol=1e-3)
