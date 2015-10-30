@@ -20,5 +20,5 @@ BDD_BELOW =0x2
 BDD_ABOVE =0x4
 BOUNDED   =0x8
 
-import lp
-import solvers
+from . import lp
+from . import solvers
