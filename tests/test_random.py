@@ -12,8 +12,8 @@ from functools import partial
 # Wrap random_problem to create a few tests cases of difference sizes
 # Arguments for random_problem are m, n, density and nproblems
 all_problems = (
-    partial(random_problem, 10, 10, 0.2, 64),
-    partial(random_problem, 20, 20, 0.1, 64),
+    partial(random_problem, 10, 10, 1., 1),
+    partial(random_problem, 20, 20, 1., 1),
 )
 
 @pytest.mark.noncl

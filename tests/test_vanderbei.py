@@ -13,7 +13,7 @@ from functools import partial
 
 all_problems = inspect.getmembers(vanderbei_problems, inspect.isfunction)
 # Create perturbed problems
-all_problems = [(pn, partial(perturb_problem, pf, 32)) for pn, pf in all_problems]
+#all_problems = [(pn, partial(perturb_problem, pf, 32)) for pn, pf in all_problems]
 
 @pytest.mark.noncl
 @pytest.mark.parametrize("name,solver_cls,problem_name,problem_func",
@@ -33,17 +33,11 @@ def pytest_solver(name, solver_cls, solver_args, problem_func):
 
     solver = solver_cls(*solver_args)
     slp.init(solver)
-    slp.solve(solver, verbose=0)
+    slp.solve(solver, verbose=2)
 
     np.testing.assert_equal(solver.status, 0)
     np.testing.assert_almost_equal(np.squeeze(solver.x), xopt,
                                    decimal=2)
-
-@pytest.mark.noncl
-@pytest.mark.parametrize("name,solver_cls,problem_name,problem_func",
-    [(n, s, pn, pf) for (n, s), (pn, pf) in product(non_cl_solvers,all_problems)])
-def test_noncl_solvers(name, solver_cls, problem_name, problem_func):
-    pytest_solver_parallel(name, solver_cls, [], problem_func)
 
 @pytest.mark.cl
 @pytest.mark.parametrize("device,name,solver_cls,problem_func",

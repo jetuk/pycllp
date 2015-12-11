@@ -6,7 +6,7 @@ import numpy as np
 import pyopencl as cl
 import time
 
-DTYPE = np.float64
+DTYPE = np.float32
 IDTYPE = np.int32
 
 class ClDensePrimalNormalSolver(BaseSolver):
@@ -37,7 +37,7 @@ class ClDensePrimalNormalSolver(BaseSolver):
         cl_size = lp.nproblems
 
         A = np.array(lp.A.todense()).astype(DTYPE)
-        self._x = np.empty(n*cl_size, dtype=DTYPE)
+        self._x = np.empty(n*cl_size, dtype=np.float64)
         self.status = np.empty(cl_size, dtype=IDTYPE)
         # Copy A to the device.
         # This should now never change!
@@ -48,7 +48,7 @@ class ClDensePrimalNormalSolver(BaseSolver):
         # Create coordinate buffers
         for coord, size in zip(('x', 'z', 'y', 'w'), (n, n, m, m)):
             for pfx in ('', 'd'):
-                self.buffers[pfx+coord] = cl.Buffer(ctx, mf.READ_WRITE, size*cl_size*DTYPE().itemsize)
+                self.buffers[pfx+coord] = cl.Buffer(ctx, mf.READ_WRITE, size*cl_size*np.float64().itemsize)
 
         # The constraint bounds and objective function buffers will only
         # ever be updated by the host to the device, and do not need to read
@@ -58,16 +58,17 @@ class ClDensePrimalNormalSolver(BaseSolver):
         size = m*(m+1)/2
         self.buffers['L'] = cl.Buffer(ctx, mf.READ_WRITE | mf.HOST_NO_ACCESS, size*cl_size*DTYPE().itemsize)
         self.buffers['D'] = cl.Buffer(ctx, mf.READ_WRITE | mf.HOST_NO_ACCESS, m*cl_size*DTYPE().itemsize)
+        self.buffers['S'] = cl.Buffer(ctx, mf.READ_WRITE | mf.HOST_NO_ACCESS, m*cl_size*np.float64().itemsize)
         self.buffers['status'] = cl.Buffer(ctx, mf.WRITE_ONLY, cl_size*IDTYPE().itemsize)
 
         # Argument list for main solve routine, standard_primal_normal
         self.solve_args = [m, n]
         self.solve_args += [self.buffers[key] for key in ('A', 'x', 'z', 'y', 'w', 'dx', 'dz',
-                            'dy', 'dw', 'b', 'c', 'L', 'D', 'status')]
+                            'dy', 'dw', 'b', 'c', 'L', 'D', 'S', 'status')]
 
         if verbose > 0:
             print("Building OpenCL program...")
-        build_opts = ['-I '+CL_PATH]
+        build_opts = ['-I '+CL_PATH, '-Werror',]
         self.program = cl_program_from_files(ctx, ('primal_normal.cl', 'ldl.cl')).build(options=build_opts)
 
         # Set the coordinate vectors to 1.0
@@ -75,7 +76,8 @@ class ClDensePrimalNormalSolver(BaseSolver):
         # where the previous solve finished.
         if verbose > 0:
             print("Initializing central path variables on device...")
-        self.program.initialize_xzyw(queue, (cl_size,), None, m, n, *[self.buffers[key] for key in ('x', 'z', 'y', 'w')])
+        event = self.program.initialize_xzyw(queue, (cl_size,), None, m, n, *[self.buffers[key] for key in ('x', 'z', 'y', 'w')])
+        event.wait()
 
         if verbose > 0:
             print("Solver initialized.")
@@ -102,6 +104,10 @@ class ClDensePrimalNormalSolver(BaseSolver):
         if verbose > 0:
             print("Executing solver kernel...")
             t = time.time()
+
+        event = self.program.initialize_xzyw(queue, (cl_size,), None, m, n, *[self.buffers[key] for key in ('x', 'z', 'y', 'w')])
+        event.wait()
+
         event = self.program.standard_primal_normal(queue, (cl_size, ), None, *(self.solve_args+[np.int32(verbose)]))
         event.wait()
         if verbose > 0:

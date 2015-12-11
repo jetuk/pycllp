@@ -14,7 +14,7 @@ import numpy as np
 from . import BaseSolver
 
 
-EPS = 1.0e-12
+EPS = 1.0e-6
 MAX_ITER = 200
 
 
@@ -119,8 +119,8 @@ class DensePathFollowingSolver(BaseSolver):
             primal_obj = np.dot(c, x) + f
             dual_obj = np.dot(b, y) + f
             if verbose > 0:
-                print("{:8d}   {:14.7e}  {:8.1e}    {:14.7e}  {:8.1e} ".format(
-                  _iter, primal_obj, normr, dual_obj, norms,))
+                print("{:8d}   {:14.7e}  {:8.1e}    {:14.7e}  {:8.1e} {:8.1e} {:8.1e} ".format(
+                  _iter, primal_obj, normr, dual_obj, norms, gamma, EPS))
 
             # STEP 2.5: Check stopping rule.
 

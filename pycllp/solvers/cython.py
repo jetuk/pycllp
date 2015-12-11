@@ -18,6 +18,7 @@ class CyHSDSolver(BaseCSCSolver):
         status = np.empty(nlp, dtype=np.int32)
 
         for i in range(nlp):
+            print(i)
             status[i] = hsd_solver(m, n, len(self.Ai),
                             self.Ai, self.Ak, self.A[0,:],
                             b[i,:], lp.c[i,:],

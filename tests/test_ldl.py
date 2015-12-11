@@ -2,10 +2,10 @@
 Test of the LDL implementations provided in pycllp.ldl
 """
 
-from pycllp.ldl import cholesky, ldl, forward_backward, ldl_forward_backward
+from pycllp.ldl import cholesky, modified_ldl, ldl, forward_backward, forward_backward_ldl, forward_backward_modified_ldl
 import pytest
 import numpy as np
-DTYPE = np.float64
+DTYPE = np.float32
 
 @pytest.fixture
 def m():
@@ -52,8 +52,24 @@ def test_cholesky(A):
     # Perform decompositions
     np_chlsky = np.linalg.cholesky(A)
     py_chlsky = cholesky(A)
+
     # Check implementation of Cholesky above is the same as numpy
     np.testing.assert_allclose(np_chlsky, py_chlsky)
+    # Check implementation of modified Cholesky algorithm
+    D, L = modified_ldl(A)
+    mod_chlsky = np.dot(L, np.eye(D.shape[0])*np.sqrt(D))
+    np.testing.assert_allclose(np_chlsky, mod_chlsky)
+
+
+def test_modified_ldl(m, n):
+    A = np.random.rand(m, n)
+    A = np.dot(A, A.T)
+    # Perform decompositions
+    np_chlsky = cholesky(A)
+    D, L = modified_ldl(A)
+    py_chlsky = np.dot(L, np.eye(m)*np.sqrt(D))
+    # Check implementation of Cholesky above is the same as numpy
+    assert np.any(np.isfinite(py_chlsky))
 
 
 def test_ldl(A):
@@ -77,8 +93,11 @@ def test_solve_ldl(A, b):
     py_ldl_x = forward_backward(py_ldl_L*py_ldl_D, py_ldl_L.T, b)
     np.testing.assert_allclose(np_x, py_ldl_x)
 
-    py_ldl_x = ldl_forward_backward(A, b)
-    np.testing.assert_allclose(np_x, py_ldl_x)
+    py_ldl_x2 = forward_backward_ldl(py_ldl_L, py_ldl_D, b)
+    np.testing.assert_allclose(np_x, py_ldl_x2)
+
+    py_ldl_x3 = forward_backward_modified_ldl(A, b)
+    np.testing.assert_allclose(np_x, py_ldl_x3)
 
 
 @pytest.mark.cl
@@ -113,7 +132,21 @@ def test_cl_ldl(AA):
     L_g = cl.Buffer(ctx, mf.READ_WRITE, L.nbytes)
     D_g = cl.Buffer(ctx, mf.READ_WRITE, D.nbytes)
 
+    # Test normal LDL (unmodified)
     prg.ldl(queue, (cl_size,), None, np.int32(m), np.int32(n), A_g, L_g, D_g)
+
+    cl.enqueue_copy(queue, L, L_g)
+    cl.enqueue_copy(queue, D, D_g)
+
+    # Compare each matrix decomposition with the python equivalent.
+    for i in range(cl_size):
+        np.testing.assert_allclose(py_ldl_D[..., i], D[i::cl_size], rtol=1e-6, atol=1e-7)
+        np.testing.assert_allclose(py_ldl_L[..., i][np.tril_indices(m)], L[i::cl_size], rtol=1e-6, atol=1e-7)
+
+    # Now test the modified algorithm ...
+    beta = np.sqrt(np.amax(AA))
+    prg.modified_ldl(queue, (cl_size,), None, np.int32(m), np.int32(n), A_g, L_g, D_g,
+                     DTYPE(beta), DTYPE(1e-6))
 
     cl.enqueue_copy(queue, L, L_g)
     cl.enqueue_copy(queue, D, D_g)
@@ -135,7 +168,7 @@ def test_solve_primal_normal(m, n, b, c):
     mu = 1.0
     bb = b - A.dot(x) - mu/y - (A*x/z).dot(c - A.T.dot(y) + mu/x)
 
-    np_dy = np.linalg.solve(-(np.eye(m)*w/y + (A*x/z).dot(A.T)), bb)
+    np_dy = np.linalg.solve((np.eye(m)*w/y + (A*x/z).dot(A.T)), -bb)
 
     py_dy = solve_primal_normal(A, x, z, y, w, b, c, mu)
 
@@ -143,7 +176,7 @@ def test_solve_primal_normal(m, n, b, c):
 
 
 @pytest.mark.cl
-def test_cl_solve_primal_normal(m, n, cl_size):
+def test_cl_solve_primal_normal_ldl(m, n, cl_size):
     """ Test the CL implentation of LDL algorithm.
 
     This tests a series (cl_size) of matrices against the Python implementation.
@@ -190,7 +223,7 @@ def test_cl_solve_primal_normal(m, n, cl_size):
     dy_g = cl.Buffer(ctx, mf.READ_WRITE, dy.nbytes)
 
     prg.solve_primal_normal(queue, (cl_size,), None, np.int32(m), np.int32(n),
-                            A_g, x_g, z_g, y_g, w_g, b_g, c_g, DTYPE(mu), L_g, D_g, dy_g)
+                            A_g, x_g, z_g, y_g, w_g, b_g, c_g, DTYPE(mu), L_g, D_g, dy_g, DTYPE(1e-6))
 
     cl.enqueue_copy(queue, dy, dy_g)
 

@@ -77,13 +77,14 @@ def pytest_solver_parallel(name, solver_cls, solver_args, problem_func,
 
     solver = solver_cls(*solver_args)
     slp.init(solver)
-    slp.solve(solver, verbose=0)
+    slp.solve(solver, verbose=2)
     npblms = slp.nproblems
 
     pysolver = solver_registry[compare_with_solver]()
     slp.init(pysolver)
     slp.solve(pysolver, verbose=0)
     # Test that the optimal solutions are the same
+    print(np.where(pysolver.status != solver.status))
     np.testing.assert_equal(pysolver.status==0, solver.status==0)
     for i in range(npblms):
         if solver.status[i] == 0:

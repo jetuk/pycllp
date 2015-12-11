@@ -3,6 +3,7 @@
 #endif
 
 __kernel void solve_primal_normal(int m, int n, __global real* A,
-  __global real* x, __global real* z, __global real* y, __global real* w,
+  __global double* x, __global double* z, __global double* y, __global double* w,
   __global real* b, __global real* c, real mu,
-  __global real* L, __global real* D, __global real* dy);
+  __global real* L, __global real* D, __global double* S, __global double* dy,
+  real delta);

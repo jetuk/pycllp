@@ -82,6 +82,10 @@ class TestScalarMatrix(object):
         assert A.nnzeros == 4
         assert A.nproblems == 1
 
+        assert_allclose(A.todense(0),
+                        [[1.0, 0.0, 1.0, 1.0],
+                         [0.0, 1.0, 0.0, 0.0]])
+
         A._del_row(1)
 
         assert A.nrows == 1

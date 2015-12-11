@@ -2,15 +2,16 @@
 Here is an implementation of a path following interior point method.
 
 */
-#define real double
-#include <ldl.h>
-#define EPS 1.0e-6
-#define MAX_ITER 200
-
+#pragma OPENCL EXTENSION cl_khr_fp64 : enable
+#define real float
+#include "ldl.h"
+#define EPS 1.0e-4f
+#define EPS2 1.0e-12f
+#define MAX_ITER 50
 
 
 __kernel void initialize_xzyw(int m, int n,
-  __global real* x, __global real* z, __global real* y, __global real* w) {
+  __global double* x, __global double* z, __global double* y, __global double* w) {
   /* Initialize the arrays x, z, y and w to unity. */
   int i, j;
   int gid = get_global_id(0);
@@ -27,10 +28,10 @@ __kernel void initialize_xzyw(int m, int n,
 }
 
 __kernel void standard_primal_normal(int m, int n, __global real* A,
-  __global real* x, __global real* z, __global real* y, __global real* w,
-  __global real* dx, __global real* dz, __global real* dy, __global real* dw,
+  __global double* x, __global double* z, __global double* y, __global double* w,
+  __global double* dx, __global double* dz, __global double* dy, __global double* dw,
   __global real* b, __global real* c, __global real* L, __global real* D,
-  __global int* status, int verbose) {
+  __global double* S, __global int* status, int verbose) {
   /* Solve a set of linear programmes in standard form using the primal
   form of the normal equations.
 
@@ -52,14 +53,14 @@ __kernel void standard_primal_normal(int m, int n, __global real* A,
   int gsize = get_global_size(0);
   int stat = 5;
 
-  real normr0 = HUGE_VALF;
-  real norms0 = HUGE_VALF;
-  real normr, norms, rho, sigma;
-  real gamma, mu;
-  real theta;
-  real delta = 0.02;
-  real r = 0.9;
-
+  double normr0 = HUGE_VALF/10;
+  double norms0 = HUGE_VALF/10;
+  double normr, norms, rho, sigma;
+  double gamma, mu;
+  double theta;
+  double delta = 0.02f;
+  double r = 0.9;
+  double Aty, Atdy, tmp;
 
   for (iter=0; iter<MAX_ITER; iter++) {
     /* primal infeasibility,
@@ -70,12 +71,18 @@ __kernel void standard_primal_normal(int m, int n, __global real* A,
     */
     normr = 0.0;
     for (i=0; i<m; i++) {
+      //printf("%8.5e \n", b[i*gsize+gid]);
       rho = b[i*gsize+gid] - w[i*gsize+gid];
       for (j=0; j<n; j++) {
-        rho += -A[i*n+j]*x[j*gsize+gid];
+        rho -= A[i*n+j]*x[j*gsize+gid];
       }
-      normr += fabs(rho);
+
+      normr += pown(rho, 2);
+      //normr += fabs(rho);
+      //printf("%8.5e %8.5e %8.5e %8.5e ", rho, pown(rho, 2), normr, sqrt(normr));
+      //printf("%8.5e %8.5e %8.5e %8.5e\n", rho, b[i*gsize+gid], w[i*gsize+gid], b[i*gsize+gid] - w[i*gsize+gid]);
     }
+    normr = sqrt(normr);
 
     /* dual infeasibility,
       sigma = c - A'y + z
@@ -88,8 +95,9 @@ __kernel void standard_primal_normal(int m, int n, __global real* A,
       for (i=0; i<m; i++) {
         sigma += -A[i*n+j]*y[i*gsize+gid];
       }
-      norms += fabs(sigma);
+      norms += pown(sigma, 2);
     }
+    norms = sqrt(norms);
 
     /* complementarity,
       gamma = z'x + y'w
@@ -103,7 +111,7 @@ __kernel void standard_primal_normal(int m, int n, __global real* A,
     }
 
     if (verbose > 1) {
-      printf("%5d %2d |rho|: %8.1e  |sigma| %8.1e:  gamma: %8.1e\n", gid, iter, normr, norms, gamma);
+      printf("%d/%d %2d |rho|: %8.1e  |sigma| %8.1e:  gamma: %8.1e\n", gid, gsize, iter, normr, norms, gamma);
     }
 
     /* Check stopping conditions
@@ -127,44 +135,70 @@ __kernel void standard_primal_normal(int m, int n, __global real* A,
     mu = delta * gamma / (n + m);
 
     // solve the primal normal equations
-    solve_primal_normal(m, n, A, x, z, y, w, b, c, mu, L, D, dy);
+    solve_primal_normal(m, n, A, x, z, y, w, b, c, mu, L, D, S, dy, 1e-8);
     theta = 0.0;
 
     // compute other coordinating deltas and theta
     //printf("  dy      dw\n");
     for (i=0; i<m; i++) {
-      dw[i*gsize+gid] = (mu - y[i*gsize+gid]*w[i*gsize+gid] - w[i*gsize+gid]*dy[i*gsize+gid])/y[i*gsize+gid];
+      //tmp = 1.0f/y[i*gsize+gid];
+      //dw[i*gsize+gid] = mu*tmp - w[i*gsize+gid] - w[i*gsize+gid]*dy[i*gsize+gid]*tmp;
 
-      theta = max(theta, max(-dw[i*gsize+gid]/w[i*gsize+gid], -dy[i*gsize+gid]/y[i*gsize+gid]));
+      dw[i*gsize+gid] = (mu - w[i*gsize+gid]*dy[i*gsize+gid])/y[i*gsize+gid] - w[i*gsize+gid];
+
+      theta = fmax(theta, (double)fmax(-dw[i*gsize+gid]/w[i*gsize+gid], -dy[i*gsize+gid]/y[i*gsize+gid]));
       //printf("%8.1e %8.1e %8.1e %8.1e %8.1e %8.1e\n", y[i*gsize+gid], w[i*gsize+gid], dy[i*gsize+gid], dw[i*gsize+gid], -dw[i*gsize+gid]/w[i*gsize+gid], -dy[i*gsize+gid]/y[i*gsize+gid]);
     }
+    //printf("\n dx: \n");
 
     //printf("  dx      dz\n");
     for (j=0; j<n; j++) {
-      dx[j*gsize+gid] = (c[j*gsize+gid] + mu/x[j*gsize+gid]);
+      Aty = 0.0f;
+      Atdy = 0.0f;
       for (i=0; i<m; i++) {
-        dx[j*gsize+gid] += -A[i*n+j]*(y[i*gsize+gid] + dy[i*gsize+gid]);
+        Aty += A[i*n+j]*y[i*gsize+gid];
+        Atdy += A[i*n+j]*dy[i*gsize+gid];
       }
-      //printf("%8.1e ", dx[j*gsize+gid]);
-      dx[j*gsize+gid] *= x[j*gsize+gid]/z[j*gsize+gid];
-      dz[j*gsize+gid] = (mu - x[j*gsize+gid]*z[j*gsize+gid] - z[j*gsize+gid]*dx[j*gsize+gid])/x[j*gsize+gid];
+      tmp = x[j*gsize+gid]/z[j*gsize+gid];
 
-      theta = max(theta, max(-dz[j*gsize+gid]/z[j*gsize+gid], -dx[j*gsize+gid]/x[j*gsize+gid]));
+      dx[j*gsize+gid] = c[j*gsize+gid]*tmp - Aty*tmp + mu*tmp/x[j*gsize+gid] - Atdy*tmp;
+
+      if (iter > 10) {
+        //printf("%8.5e %8.5e %8.5e\n", tmp, z[j*gsize+gid], x[j*gsize+gid]);
+      if (j % 10 == 0) {
+        //printf("\n");
+      }
+      }
+
+
+      //printf("%8.1e ", dx[j*gsize+gid]);
+      //dx[j*gsize+gid] *= x[j*gsize+gid];
+      //dx[j*gsize+gid] += mu;
+      //dx[j*gsize+gid] /= z[j*gsize+gid];
+
+      //tmp = 1.0/x[j*gsize+gid];
+      //dz[j*gsize+gid] = mu*tmp - z[j*gsize+gid] - z[j*gsize+gid]*dx[j*gsize+gid]*tmp;
+
+      dz[j*gsize+gid] = (mu - z[j*gsize+gid]*dx[j*gsize+gid])/x[j*gsize+gid] - z[j*gsize+gid] ;
+
+      theta = fmax(theta, (double)fmax(-dz[j*gsize+gid]/z[j*gsize+gid], -dx[j*gsize+gid]/x[j*gsize+gid]));
       //printf("%d %8.1e %8.1e %8.1e %8.1e %8.1e %8.1e\n", gid, x[j*gsize+gid], z[j*gsize+gid], dx[j*gsize+gid], dz[j*gsize+gid], -dz[j*gsize+gid]/z[j*gsize+gid], -dx[j*gsize+gid]/x[j*gsize+gid]); //, x[j*gsize+gid]/z[j*gsize+gid]);
     }
     //printf("theta: %8.1e\n", theta);
-    theta = min(r/theta, 1.0);
+    theta = fmin(r/theta, 1.0);
 
     //printf("theta: %8.1e\n", theta);
 
     for (i=0; i<m; i++) {
-      w[i*gsize+gid] += theta*dw[i*gsize+gid];
-      y[i*gsize+gid] += theta*dy[i*gsize+gid];
+      w[i*gsize+gid] = w[i*gsize+gid] + theta*dw[i*gsize+gid];
+      y[i*gsize+gid] = y[i*gsize+gid] + theta*dy[i*gsize+gid];
+      //printf("w: %8.5e y: %8.5e\n", w[i*gsize+gid], y[i*gsize+gid]);
     }
 
     for (j=0; j<n; j++) {
-      z[j*gsize+gid] += theta*dz[j*gsize+gid];
-      x[j*gsize+gid] += theta*dx[j*gsize+gid];
+      z[j*gsize+gid] = z[j*gsize+gid] + theta*dz[j*gsize+gid];
+      x[j*gsize+gid] = x[j*gsize+gid] + theta*dx[j*gsize+gid];
+      //printf("z: %8.5e x: %8.5e\n", z[j*gsize+gid], x[j*gsize+gid]);
     }
 
     normr0 = normr;
