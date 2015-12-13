@@ -303,7 +303,7 @@ class SparseMatrix(object):
 
 
 
-class StandardLP(object):
+class EqualityLP(object):
     """
     Base class for LP models.
 
@@ -319,7 +319,7 @@ class StandardLP(object):
 
         subject to:
         .. math:
-            Ax <= b
+            Ax = b
             x >= 0
 
         :param A: scipy.sparse matrix (will be converted to CSC,
@@ -533,6 +533,39 @@ class StandardLP(object):
 
     def solve(self, solver, verbose=0):
         return solver.solve(self, verbose=verbose)
+
+
+class StandardLP(EqualityLP):
+    """
+    Base class for LP models.
+
+        maximize:
+        .. math:
+            c^Tx
+
+        subject to:
+        .. math:
+            Ax = b
+            x >= 0
+    """
+    def to_equality_form(self):
+        """
+        Convert the StandardLP in to an EqualityLP
+
+        This methods copies the internal data and appends slack variables for each row.
+        """
+        b = self.b.copy()
+        c = self.c.copy()
+        f = self.f.copy()
+        A = SparseMatrix(matrix=self.A.tocoo())
+        lp = EqualityLP(A, b, c, f)
+
+        for row in range(self.nrows):
+            # Add a slack variable fo each row
+            col = lp.add_col([row], [1.0], 0.0)
+            print(col)
+
+        return lp
 
 
 class GeneralLP(StandardLP):

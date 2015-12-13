@@ -6,8 +6,8 @@ from __future__ import print_function
 import numpy as np
 from scipy.linalg import solve_triangular
 from . import BaseSolver
-from ..ldl import modified_ldl, solve_primal_normal, refined_forward_backward, modified_cholesky, forward_backward
-
+from .._ldl import solve_primal_normal
+import sys
 
 EPS = 1.0e-8
 MAX_ITER = 200
@@ -36,7 +36,7 @@ class DensePrimalNormalSolver(BaseSolver):
         print(ilp)
         n = lp.ncols
         m = lp.nrows
-        m2 = m+n
+
         A = np.array(lp.A.todense(problem=ilp))
         b = lp.b[ilp, :]
         c = lp.c[ilp, :]
@@ -44,10 +44,9 @@ class DensePrimalNormalSolver(BaseSolver):
 
         x = np.ones(n)
         z = np.ones(n)
-        w = np.ones(m)
         y = np.ones(m)
 
-        import sys
+
         normr0 = sys.float_info.max
         norms0 = sys.float_info.max
 
@@ -57,14 +56,14 @@ class DensePrimalNormalSolver(BaseSolver):
         status = 5
 
         for _iter in range(MAX_ITER):
-            rho = b - np.dot(A, x) - w
-            #normr = np.sum(np.abs(rho))
+            rho = b - np.dot(A, x)
             normr = np.sqrt(np.dot(rho, rho))
+
             sigma = c - np.dot(A.T, y) + z
-            #norms = np.sum(np.abs(sigma))
             norms = np.sqrt(np.dot(sigma, sigma))
-            gamma = np.dot(z, x) + np.dot(w, y)
-            mu = delta * gamma / (n+m)
+
+            gamma = np.dot(z, x)
+            mu = delta * gamma / n
 
             if verbose > 0:
                 print("{:d} |rho|: {:8.1e}  |sigma| {:8.1e}  gamma: {:8.1e}".format(_iter, normr, norms, gamma))
@@ -82,20 +81,19 @@ class DensePrimalNormalSolver(BaseSolver):
                 break  # DUAL INFEASIBLE (unreliable)
 
             # Create system of primal normal equations
-            dy2 = solve_primal_normal(A, x, z, y, w, b, c, mu, delta=1e-8)
+            dy = solve_primal_normal(A, x, z, y, b, c, mu, delta=1e-8)
 
-            AA = np.eye(m)*w/y + (A*x/z).dot(A.T)
+            AA = (A*x/z).dot(A.T)
 
-            bb = b - A.dot(x) - mu/y - (A*x/z).dot(c - A.T.dot(y) + mu/x)
+            bb = b - A.dot(x) - (A*x/z).dot(c - A.T.dot(y) + mu/x)
 
-            L, skipped = modified_cholesky(AA)
-            dy = forward_backward(L, L.T, -bb)
-            print(skipped)
+            #L, skipped = modified_cholesky(AA)
+            #dy = forward_backward(L, L.T, -bb)
+            #
+            # print(skipped)
 
             # Solve the system for dy
             #dy = forward_backward_modified_ldl(AA, -bb)
-
-            print(np.abs(dy2-dy))
 
             if np.any(np.isnan(dy)):
                 status = 2
@@ -107,16 +105,13 @@ class DensePrimalNormalSolver(BaseSolver):
             #    break
             dx = (c - A.T.dot(y) + mu/x - A.T.dot(dy))*x/z
             dz = (mu - x*z - z*dx)/x
-            dw = (mu - y*w - w*dy)/y
 
-            theta = max(np.max(-dx/x), np.max(-dz/z),
-                        np.max(-dy/y), np.max(-dw/w))
+            theta = max(np.max(-dx/x), np.max(-dz/z), np.max(-dy/y))
             theta = min(r/theta, 1.0)
 
             x += theta*dx
             z += theta*dz
             y += theta*dy
-            w += theta*dw
 
             normr0 = normr
             norms0 = norms

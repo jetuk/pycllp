@@ -160,17 +160,22 @@ def test_cl_ldl(AA):
 def test_solve_primal_normal(m, n, b, c):
     from pycllp.ldl import solve_primal_normal
     # Random system matrix (not positive definite by itself)
-    A = np.random.rand(m, n)
-    x = np.random.rand(n)
-    z = np.random.rand(n)
+    # Must add slack variables ot this system
+    A = np.c_[np.random.rand(m, n), np.eye(m)]
+    x = np.random.rand(m+n)
+    z = np.random.rand(m+n)
     y = np.random.rand(m)
-    w = np.random.rand(m)
+    # Extend c with slack variables
+    cc = np.r_[c, np.zeros(m)]
+
     mu = 1.0
-    bb = b - A.dot(x) - mu/y - (A*x/z).dot(c - A.T.dot(y) + mu/x)
-
-    np_dy = np.linalg.solve((np.eye(m)*w/y + (A*x/z).dot(A.T)), -bb)
-
-    py_dy = solve_primal_normal(A, x, z, y, w, b, c, mu)
+    # Create normal equations
+    bb = b - A.dot(x) - (A*x/z).dot(cc - A.T.dot(y) + mu/x)
+    AA = (A*x/z).dot(A.T)
+    # Solve with numpy
+    np_dy = np.linalg.solve(AA, -bb)
+    # Check this implementation
+    py_dy = solve_primal_normal(A, x, z, y, b, cc, mu, delta=0.0)
 
     np.testing.assert_allclose(np_dy, py_dy)
 

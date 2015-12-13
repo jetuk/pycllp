@@ -12,7 +12,7 @@ Port to Python
 from __future__ import print_function
 import numpy as np
 from . import BaseSolver
-
+import sys
 
 EPS = 1.0e-6
 MAX_ITER = 200
@@ -57,7 +57,6 @@ class DensePathFollowingSolver(BaseSolver):
 
         # Step direction
         dx = np.zeros(n)
-        dw = np.zeros(m)
         dxy = np.zeros(m2)
         dy = np.zeros(m)
         dz = np.zeros(n)
@@ -73,9 +72,8 @@ class DensePathFollowingSolver(BaseSolver):
 
         x = np.ones(n)
         z = np.ones(n)
-        w = np.ones(m)
         y = np.ones(m)
-        import sys
+
         normr0 = sys.float_info.max
         norms0 = sys.float_info.max
 
@@ -105,15 +103,14 @@ class DensePathFollowingSolver(BaseSolver):
         for _iter in range(MAX_ITER):
             # STEP 1: Compute infeasibilities.
 
-            rho[...] = b - np.dot(A, x) - w
+            rho[...] = b - np.dot(A, x)
             normr = np.sqrt(np.dot(rho, rho))
 
             sigma[...] = c - np.dot(At, y) + z
             norms = np.sqrt(np.dot(sigma, sigma))
 
             # STEP 2: Compute duality gap.
-
-            gamma = np.dot(z, x) + np.dot(w, y)
+            gamma = np.dot(z, x)
 
             # Print statistics.
             primal_obj = np.dot(c, x) + f
@@ -138,20 +135,18 @@ class DensePathFollowingSolver(BaseSolver):
 
             # STEP 3: Compute central path parameter.
 
-            mu = delta * gamma / (n+m)
+            mu = delta * gamma / n
 
             # STEP 4: Compute step directions.
             D[...] = z/x
-            E[...] = w/y
+            E[...] = 0.0
 
             # Create B matrix
-
-            B[:m, :m] = np.diag(-E)  # top left
-
+            B[:m, :m] = np.diag(E)  # top left
             B[m:, m:] = np.diag(D)  # bottom right
 
             dx = sigma - z + mu/x
-            dy = rho + w - mu/y
+            dy = rho
             dxy[:m] = dy
             dxy[m:] = dx
             dxy = np.linalg.solve(B, dxy)
@@ -159,21 +154,17 @@ class DensePathFollowingSolver(BaseSolver):
             dx = dxy[m:]
 
             dz = mu/x - z - D*dx
-            dw = mu/y - w - E*dy
 
             # STEP 5: Ratio test to find step length.
 
-            theta = max(0.0, np.max(-dx/x), np.max(-dz/z),
-                        np.max(-dy/y), np.max(-dw/w))
+            theta = max(0.0, np.max(-dx/x), np.max(-dz/z), np.max(-dy/y))
             theta = min(r/theta, 1.0)
 
             # STEP 6: Step to new point
 
-            x = x + theta*dx
-            z = z + theta*dz
-
-            y = y + theta*dy
-            w = w + theta*dw
+            x += theta*dx
+            z += theta*dz
+            y += theta*dy
 
         normr0 = normr
         norms0 = norms

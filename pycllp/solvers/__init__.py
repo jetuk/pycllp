@@ -1,5 +1,4 @@
 from six import with_metaclass
-import numpy as np
 
 solver_registry = {}
 
@@ -37,3 +36,4 @@ from .cython import CyHSDSolver
 from .cl import ClDensePrimalNormalSolver
 from .pathfollowing import DensePathFollowingSolver
 from .normal_eqns import DensePrimalNormalSolver
+from .glpk import GlpkSolver

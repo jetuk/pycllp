@@ -61,7 +61,7 @@ def random_problem(m, n, density, nproblems):
 
 
 def pytest_solver_parallel(name, solver_cls, solver_args, problem_func,
-                           compare_with_solver='cyhsd'):
+                           compare_with_solver='glpk'):
     """
     Test problem_func with solver_cls using solver_args against another solver.
     """
@@ -75,19 +75,21 @@ def pytest_solver_parallel(name, solver_cls, solver_args, problem_func,
         lp = GeneralLP(*args)
         slp = lp.to_standard_form()
 
-    solver = solver_cls(*solver_args)
-    slp.init(solver)
-    slp.solve(solver, verbose=2)
-    npblms = slp.nproblems
+    elp = slp.to_equality_form()
 
-    pysolver = solver_registry[compare_with_solver]()
-    slp.init(pysolver)
-    slp.solve(pysolver, verbose=0)
+    solver = solver_cls(*solver_args)
+    elp.init(solver)
+    elp.solve(solver, verbose=2)
+    npblms = elp.nproblems
+
+    solver2 = solver_registry[compare_with_solver]()
+    elp.init(solver2)
+    elp.solve(solver2, verbose=0)
     # Test that the optimal solutions are the same
-    print(np.where(pysolver.status != solver.status))
-    np.testing.assert_equal(pysolver.status==0, solver.status==0)
+
+    np.testing.assert_equal(solver2.status==0, solver.status==0)
     for i in range(npblms):
         if solver.status[i] == 0:
-            np.testing.assert_allclose(
-                    pysolver.x[i, :],
-                    solver.x[i, :], rtol=1e-3, atol=1e-3)
+            # Test only the non-slack variables
+            ind = np.where(np.abs(elp.c[i, :]) > 0.0)
+            np.testing.assert_allclose(solver2.x[i, ind], solver.x[i, ind], rtol=1e-3, atol=1e-3)

@@ -18,11 +18,15 @@ cyipo = Extension('pycllp._ipo',
     include_dirs = ['pycllp/common', 'pycllp/ipo', numpy.get_include()]
     )
 
+glpk = Extension('pycllp.solvers.cython_glpk', ['pycllp/solvers/cython_glpk.pyx'], libraries=['glpk'],)
+
+ldl = Extension('pycllp._ldl', ['pycllp/_ldl.pyx'], include_dirs=[numpy.get_include()])
+
 setup(name='pycllp',
       packages=['pycllp', 'pycllp.solvers'],
       install_requires=['numpy>=1.7', 'scipy>=0.14', 'pyopencl>=2015.0',
                         'cython>0.17'],
-      ext_modules=[cyipo],
+      ext_modules=[cyipo, glpk, ldl],
       cmdclass = {'build_ext': build_ext},
       package_data={'pycllp': ['cl/*.h', 'cl/*.cl']}
       )
