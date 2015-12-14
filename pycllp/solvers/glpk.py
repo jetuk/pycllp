@@ -1,6 +1,6 @@
 import numpy as np
 from . import BaseSolver
-from cython_glpk import glpk_solve
+from .cython_glpk import glpk_solve
 
 
 class GlpkSolver(BaseSolver):

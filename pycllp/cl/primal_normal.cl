@@ -3,7 +3,7 @@ Here is an implementation of a path following interior point method.
 
 */
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
-#define real float
+#define real double
 #include "ldl.h"
 #define EPS 1.0e-4f
 #define EPS2 1.0e-12f

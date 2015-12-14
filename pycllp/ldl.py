@@ -8,7 +8,7 @@ testing and implementing those same algorithms in OpenCL.
 """
 import numpy as np
 
-from _ldl import solve_primal_normal
+from ._ldl import solve_primal_normal
 
 def cholesky(A,):
     """ Returns a Cholesky decomposition of A, L such that,

@@ -6,7 +6,7 @@ a system of linear equations, Ax = b, using forward-backward substition.
 
 */
 #ifndef real
-  #define real float
+  #define real double
 #endif
 
 inline int tri_index(int i, int j, int size, int gid) {
@@ -146,14 +146,14 @@ double AXZAt_ii(int i, int m, int n, int size, int gid, __global real* A,
 }
 
 double primal_normal_rhs_i(int i, int m, int n, int size, int gid, __global real* A,
-  __global double* x, __global double* z, __global double* y, __global double* w,
+  __global double* x, __global double* z, __global double* y,
   __global real* b,  __global real* c, real mu) {
   /* Compute the ith element of the right-hand side vector of the normal equations
 
-    RHS = b - Ax - mu/Y - (AX/Z)*(c - A'y + mu/X)
+    RHS = b - Ax - (AX/Z)*(c - A'y + mu/X)
   */
-  //printf("%d %8.5e \n", i, b[i*size+gid]);
-  real rhs = b[i*size+gid] - mu/y[i*size+gid];
+
+  real rhs = b[i*size+gid];
   real Aty, Ax;
   int j, k;
 
@@ -162,18 +162,14 @@ double primal_normal_rhs_i(int i, int m, int n, int size, int gid, __global real
     for (k=0; k<m; k++) {
       Aty += A[k*n+j]*y[k*size+gid];
     }
-    Ax = -A[i*n+j]*x[j*size+gid];
-    rhs += Ax + Ax*c[j*size+gid]/z[j*size+gid] - Ax*Aty/z[j*size+gid] - mu*A[i*n+j]/z[j*size+gid];
-
-
-    //rhs += -A[i*n+j]*x[j*size+gid];
-    //rhs += -A[i*n+j]*x[j*size+gid]*(c[j*size+gid] - Aty + mu/x[j*size+gid])/z[j*size+gid];
+    rhs += -A[i*n+j]*x[j*size+gid];
+    rhs += -A[i*n+j]*x[j*size+gid]*(c[j*size+gid] - Aty + mu/x[j*size+gid])/z[j*size+gid];
   }
   return -rhs;
 }
 
 void factor_primal_normal(int m, int n, __global real* A,
-  __global double* x, __global double* z, __global double* y, __global double* w,
+  __global double* x, __global double* z, __global double* y,
   __global real* b, __global real* c, real mu,
   __global real* L, __global real* D, real delta) {
   /* Factor the matrix of normal equations in primal form,
@@ -209,18 +205,14 @@ void factor_primal_normal(int m, int n, __global real* A,
   beta = 0.0f;
   for (j=0; j<m; j++) {
     for (i=0; i<=j; i++) {
-        if (i == j) {
-            beta = fmax(beta, fabs(w[j*gsize+gid]/y[j*gsize+gid] + AXZAt_ii(j, m, n, gsize, gid, A, x, z)));
-        } else {
-            beta = fmax(beta, fabs(AXZAt_ij(i, j, m, n, gsize, gid, A, x, z)));
-        }
+        beta = fmax(beta, fabs(AXZAt_ij(i, j, m, n, gsize, gid, A, x, z)));
     }
   }
   beta = sqrt(beta);
 
   for (j=0; j<m; j++) {
     // iterate through the columns of the matrix
-    Dj = w[j*gsize+gid]/y[j*gsize+gid] + AXZAt_ii(j, m, n, gsize, gid, A, x, z);
+    Dj = AXZAt_ii(j, m, n, gsize, gid, A, x, z);
     for (k=0; k<j; k++) {
       Dj -= D[k*gsize+gid]*pown(L[tri_index(j, k, gsize, gid)], 2);
     }
@@ -251,7 +243,7 @@ void factor_primal_normal(int m, int n, __global real* A,
 
 
 void forward_backward_primal_normal(int m, int n, __global real* A,
-  __global double* x, __global double* z, __global double* y, __global double* w,
+  __global double* x, __global double* z, __global double* y,
   __global real* b, __global real* c, real mu,
   __global real* L, __global real* D, __global double* S, __global double* dy) {
   /* Perform forward-backward substituion on the normal equations in
@@ -283,7 +275,7 @@ void forward_backward_primal_normal(int m, int n, __global real* A,
 
 
 double residual_primal_normal(int m, int n, __global real* A,
-  __global double* x, __global double* z, __global double* y, __global double* w,
+  __global double* x, __global double* z, __global double* y,
   __global real* b, __global real* c, real mu,
   __global double* dy, __global double* S) {
   /* Calculate the residual (error) between of the solved solution
@@ -296,13 +288,9 @@ double residual_primal_normal(int m, int n, __global real* A,
   double residual;
 
   for (i=0; i<m; i++) {
-    residual = primal_normal_rhs_i(i, m, n, gsize, gid, A, x, z, y, w, b, c, mu);
+    residual = primal_normal_rhs_i(i, m, n, gsize, gid, A, x, z, y, b, c, mu);
     for (j=0; j<m; j++) {
-        if (i == j) {
-            Aij = w[j*gsize+gid]/y[j*gsize+gid] + AXZAt_ii(j, m, n, gsize, gid, A, x, z);
-        } else {
-            Aij = AXZAt_ij(i, j, m, n, gsize, gid, A, x, z);
-        }
+        Aij = AXZAt_ij(i, j, m, n, gsize, gid, A, x, z);
         residual -= Aij*dy[j*gsize+gid];
     }
     S[i*gsize+gid] = residual;
@@ -313,7 +301,7 @@ double residual_primal_normal(int m, int n, __global real* A,
 
 
 __kernel void solve_primal_normal(int m, int n, __global real* A,
-  __global double* x, __global double* z, __global double* y, __global double* w,
+  __global double* x, __global double* z, __global double* y,
   __global real* b, __global real* c, real mu,
   __global real* L, __global real* D, __global double* S, __global double* dy,
   real delta) {
@@ -342,27 +330,26 @@ __kernel void solve_primal_normal(int m, int n, __global real* A,
   int gsize = get_global_size(0);
   double maxr;
   // Perform factorisation
-  factor_primal_normal(m, n, A, x, z, y, w, b, c, mu, L, D, delta);
+  factor_primal_normal(m, n, A, x, z, y, b, c, mu, L, D, delta);
   // Initialise S to the RHS
   for (i=0; i<m; i++) {
     dy[i*gsize+gid] = 0.0;
-    S[i*gsize+gid] = primal_normal_rhs_i(i, m, n, gsize, gid, A, x, z, y, w, b, c, mu);
+    S[i*gsize+gid] = primal_normal_rhs_i(i, m, n, gsize, gid, A, x, z, y, b, c, mu);
   }
   // Solve system
-  forward_backward_primal_normal(m, n, A, x, z, y, w, b, c, mu, L, D, S, dy);
+  forward_backward_primal_normal(m, n, A, x, z, y, b, c, mu, L, D, S, dy);
 
   // Update S to contain the residual
-  maxr = residual_primal_normal(m, n, A, x, z, y, w, b, c, mu, dy, S);
-  printf("max error: %8.5e\n", maxr);
+  maxr = residual_primal_normal(m, n, A, x, z, y, b, c, mu, dy, S);
+
   nref = 0;
   while (maxr > 1e-8 && nref < 5) {
     // Solve system
-    forward_backward_primal_normal(m, n, A, x, z, y, w, b, c, mu, L, D, S, dy);
+    forward_backward_primal_normal(m, n, A, x, z, y, b, c, mu, L, D, S, dy);
 
     // Update S to contain the residual
-    maxr = residual_primal_normal(m, n, A, x, z, y, w, b, c, mu, dy, S);
-    printf("refinement - error: %8.5e\n", maxr);
+    maxr = residual_primal_normal(m, n, A, x, z, y, b, c, mu, dy, S);
     nref += 1;
   }
-  printf("max error: %8.5e\n", maxr);
+
 }

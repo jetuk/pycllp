@@ -5,7 +5,7 @@ Test of the LDL implementations provided in pycllp.ldl
 from pycllp.ldl import cholesky, modified_ldl, ldl, forward_backward, forward_backward_ldl, forward_backward_modified_ldl
 import pytest
 import numpy as np
-DTYPE = np.float32
+DTYPE = np.float64
 
 @pytest.fixture
 def m():
@@ -189,18 +189,17 @@ def test_cl_solve_primal_normal_ldl(m, n, cl_size):
     from pycllp.ldl import solve_primal_normal
 
     # Random system matrix (not positive definite by itself)
-    A = np.random.rand(m, n).astype(dtype=DTYPE)
-    x = np.random.rand(n, cl_size).astype(dtype=A.dtype)
-    z = np.random.rand(n, cl_size).astype(dtype=A.dtype)
+    A = np.c_[np.random.rand(m, n), np.eye(m)].astype(dtype=DTYPE)
+    x = np.random.rand(m+n, cl_size).astype(dtype=A.dtype)
+    z = np.random.rand(m+n, cl_size).astype(dtype=A.dtype)
     y = np.random.rand(m, cl_size).astype(dtype=A.dtype)
-    w = np.random.rand(m, cl_size).astype(dtype=A.dtype)
     b = np.random.rand(m, cl_size).astype(dtype=A.dtype)
-    c = np.random.rand(n, cl_size).astype(dtype=A.dtype)
+    c = np.r_[np.random.rand(n, cl_size), np.zeros((m, cl_size))].astype(dtype=A.dtype)
     mu = 1.0
     # First calculate the Python based values for each matrix in AA
     py_dy = np.empty((m, cl_size)).astype(dtype=A.dtype)
     for i in range(cl_size):
-        py_dy[:, i] = solve_primal_normal(A, x[:, i], z[:, i], y[:, i], w[:, i], b[:, i], c[:, i], mu)
+        py_dy[:, i] = solve_primal_normal(A, x[:, i], z[:, i], y[:, i], b[:, i], c[:, i], mu)
 
     # Setup CL context
     import pyopencl as cl
@@ -218,17 +217,17 @@ def test_cl_solve_primal_normal_ldl(m, n, cl_size):
     x_g = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=x)
     z_g = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=z)
     y_g = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=y)
-    w_g = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=w)
     b_g = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=b)
     c_g = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=c)
     # Create and compile kernel
     prg = cl_krnl_ldl(ctx)
     L_g = cl.Buffer(ctx, mf.READ_WRITE, L.nbytes)
     D_g = cl.Buffer(ctx, mf.READ_WRITE, D.nbytes)
+    S_g = cl.Buffer(ctx, mf.READ_WRITE, D.nbytes)
     dy_g = cl.Buffer(ctx, mf.READ_WRITE, dy.nbytes)
 
-    prg.solve_primal_normal(queue, (cl_size,), None, np.int32(m), np.int32(n),
-                            A_g, x_g, z_g, y_g, w_g, b_g, c_g, DTYPE(mu), L_g, D_g, dy_g, DTYPE(1e-6))
+    prg.solve_primal_normal(queue, (cl_size,), None, np.int32(m), np.int32(m+n),
+                            A_g, x_g, z_g, y_g, b_g, c_g, DTYPE(mu), L_g, D_g, S_g, dy_g, DTYPE(1e-6))
 
     cl.enqueue_copy(queue, dy, dy_g)
 
