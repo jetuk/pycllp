@@ -24,8 +24,9 @@ ldl = Extension('pycllp._ldl', ['pycllp/_ldl.pyx'], include_dirs=[numpy.get_incl
 
 setup(name='pycllp',
       packages=['pycllp', 'pycllp.solvers'],
-      install_requires=['numpy>=1.7', 'scipy>=0.14', 'pyopencl>=2015.0',
-                        'cython>0.17'],
+      install_requires=['numpy', 'scipy', 'pyopencl'],
+      setup_requires=['cython'],
+      tests_require=['pytest'],
       ext_modules=[cyipo, glpk, ldl],
       cmdclass = {'build_ext': build_ext},
       package_data={'pycllp': ['cl/*.h', 'cl/*.cl']}
