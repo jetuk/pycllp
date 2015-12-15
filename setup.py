@@ -1,6 +1,5 @@
 from setuptools import setup, Extension
 from Cython.Distutils import build_ext
-from Cython.Build import cythonize
 import os
 import numpy
 
