@@ -17,14 +17,6 @@ inline int tri_index(int i, int j, int size, int gid) {
   return (i*(i + 1)/2 + j)*size + gid;
 }
 
-inline int tri_index_T(int i, int j, int size, int gid) {
-  /* Returns the tranposed index in lower diagonal matrix stored in an array
-
-  Separate entries are assumed for each gid.
-  */
-  return (j*(j + 1)/2 + i)*size + gid;
-}
-
 inline int matrix_index(int i, int j, int n, int size, int gid) {
   /* Returns the index in a dense 2D matrix stored in an array
 
@@ -229,7 +221,7 @@ void factor_primal_normal(int m, int n, __global real* A,
     }
 
     // Apply the maximum constraint to the diagonal values as described in Nocedal & Wright
-    Dj = fmax(fabs(Dj), fmax(pown(theta/beta, 2), (double)delta));
+    Dj = fmax(fabs(Dj), fmax(pown(theta/beta, 2), delta));
 
     for (i=j+1; i<m; i++) {
       L[tri_index(i, j, gsize, gid)] /= Dj;
@@ -261,7 +253,7 @@ void forward_backward_primal_normal(int m, int n, __global real* A,
       S[i*gsize+gid] -= S[j*gsize+gid]*L[tri_index(i, j, gsize, gid)]*D[j*gsize+gid];
     }
 
-    S[i*gsize+gid] /= (double)D[i*gsize+gid];
+    S[i*gsize+gid] /= D[i*gsize+gid];
   }
 
   // Backward substitution
@@ -269,7 +261,7 @@ void forward_backward_primal_normal(int m, int n, __global real* A,
     for (i=j+1; i<m; i++) {
       S[j*gsize+gid] -= S[i*gsize+gid]*L[tri_index(i, j, gsize, gid)];
     }
-    dy[j*gsize+gid] = (double)dy[j*gsize+gid] + S[j*gsize+gid];
+    dy[j*gsize+gid] = dy[j*gsize+gid] + S[j*gsize+gid];
   }
 }
 
