@@ -187,7 +187,7 @@ def test_cl_solve_primal_normal_ldl(m, n, cl_size):
     This tests a series (cl_size) of matrices against the Python implementation.
     """
     from pycllp.ldl import solve_primal_normal
-
+    np.random.seed(123456)
     # Random system matrix (not positive definite by itself)
     A = np.c_[np.random.rand(m, n), np.eye(m)].astype(dtype=DTYPE)
     x = np.random.rand(m+n, cl_size).astype(dtype=A.dtype)
@@ -226,11 +226,63 @@ def test_cl_solve_primal_normal_ldl(m, n, cl_size):
     S_g = cl.Buffer(ctx, mf.READ_WRITE, D.nbytes)
     dy_g = cl.Buffer(ctx, mf.READ_WRITE, dy.nbytes)
 
-    prg.solve_primal_normal(queue, (cl_size,), None, np.int32(m), np.int32(m+n),
+    evt = prg.solve_primal_normal(queue, (cl_size,), None, np.int32(m), np.int32(m+n),
                             A_g, x_g, z_g, y_g, b_g, c_g, DTYPE(mu), L_g, D_g, S_g, dy_g, DTYPE(1e-6))
-
+    evt.wait()
     cl.enqueue_copy(queue, dy, dy_g)
+    queue.finish()
 
     # Compare each solution vector, dy, with the python equivalent.
     for i in range(cl_size):
         np.testing.assert_allclose(py_dy[:, i], dy[i::cl_size], rtol=1e-5, atol=1e-5)
+
+
+@pytest.mark.cl
+def test_large_cl_solve_primal_normal_ldl(m, n, cl_size):
+    """ Test the CL implentation of LDL algorithm.
+
+    This tests a series (cl_size) of matrices against the Python implementation.
+    """
+    cl_size *= 64
+    np.random.seed(123456)
+    # Random system matrix (not positive definite by itself)
+    A = np.c_[np.random.rand(m, n), np.eye(m)].astype(dtype=DTYPE)
+    x = np.random.rand(m+n, cl_size).astype(dtype=A.dtype)
+    z = np.random.rand(m+n, cl_size).astype(dtype=A.dtype)
+    y = np.random.rand(m, cl_size).astype(dtype=A.dtype)
+    b = np.random.rand(m, cl_size).astype(dtype=A.dtype)
+    c = np.r_[np.random.rand(n, cl_size), np.zeros((m, cl_size))].astype(dtype=A.dtype)
+    mu = 1.0
+
+    # Setup CL context
+    import pyopencl as cl
+    from pycllp.ldl import cl_krnl_ldl
+    ctx = cl.create_some_context()
+    queue = cl.CommandQueue(ctx)
+
+    # Work/Result arrays
+    L = np.empty(cl_size*m*(m+1)/2, dtype=DTYPE)
+    D = np.empty(cl_size*m, dtype=DTYPE)
+    dy = np.empty(cl_size*m, dtype=DTYPE)
+
+    mf = cl.mem_flags
+    A_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=A)
+    x_g = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=x)
+    z_g = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=z)
+    y_g = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=y)
+    b_g = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=b)
+    c_g = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=c)
+    # Create and compile kernel
+    prg = cl_krnl_ldl(ctx)
+    L_g = cl.Buffer(ctx, mf.READ_WRITE, L.nbytes)
+    D_g = cl.Buffer(ctx, mf.READ_WRITE, D.nbytes)
+    S_g = cl.Buffer(ctx, mf.READ_WRITE, D.nbytes)
+    dy_g = cl.Buffer(ctx, mf.READ_WRITE, dy.nbytes)
+
+    evt = prg.solve_primal_normal(queue, (cl_size,), None, np.int32(m), np.int32(m+n),
+                            A_g, x_g, z_g, y_g, b_g, c_g, DTYPE(mu), L_g, D_g, S_g, dy_g, DTYPE(1e-6))
+    evt.wait()
+    cl.enqueue_copy(queue, dy, dy_g)
+    queue.finish()
+    print(np.sum(dy))
+    assert np.all(np.isfinite(dy))
