@@ -56,14 +56,15 @@ def test_cl_solvers(name, solver_cls):
 
 def pytest_solver(name, solver_cls, solver_args):
     lp = StandardLP(*small_problem())
+    ncols = lp.ncols
+    lp = lp.to_equality_form()
 
     solver = solver_cls(*solver_args)
     lp.init(solver, verbose=2)
     status = lp.solve(solver, verbose=2)
 
-
     np.testing.assert_equal(solver.status, 0)
-    np.testing.assert_allclose(np.squeeze(solver.x), (1.00997e-13,   1.22527e-12,   5.18790e+00), rtol=1e-1, atol=1e-1)
+    np.testing.assert_allclose(solver.x[0, :ncols], (1.00997e-13,   1.22527e-12,   5.18790e+00), rtol=1e-1, atol=1e-1)
 
 
 @pytest.mark.cl

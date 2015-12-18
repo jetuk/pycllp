@@ -250,16 +250,13 @@ class TestVanderbei2_9(object):
 
     def test_vanderbei_2_9(self, ):
         from vanderbei_problems import vanderbei_2_9
-        args = list(vanderbei_2_9())
-        args.pop()  # remove xopt
-        lp = GeneralLP(*args)
+        lp, xopt = list(vanderbei_2_9())
+
         # Test structure
-        lp_cols, lp_vals, lp_lb, lp_ub = lp.get_row(0)
+        lp_cols, lp_vals, lp_ub = lp.get_row(0)
         assert_allclose([1, 2], lp_cols)
-        assert_allclose([[-2, -3]], lp_vals)
-        assert_allclose([-5], lp_lb)
-        assert_allclose([np.inf], lp_ub)
+        assert_allclose([[2, 3]], lp_vals)
+        assert_allclose([5], lp_ub)
 
-        slp = lp.to_standard_form()
-
+        slp = lp.to_equality_form()
         slp_cols, slp_vals, slp_bound = slp.get_row(0)

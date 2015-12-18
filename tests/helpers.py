@@ -38,7 +38,7 @@ def random_problem(m, n, density, nproblems):
     Sparse matrix with density generated using scipy.sparse.rand
     """
     from scipy.sparse import rand, csc_matrix
-    from pycllp.lp import SparseMatrix
+    from pycllp.lp import SparseMatrix, StandardLP
 
     np.random.seed(0)
 
@@ -57,7 +57,7 @@ def random_problem(m, n, density, nproblems):
     # TODO make this random.
     #A.data = np.ones(A.data.shape)*old_A_data
 
-    return A, b, c, 0.0
+    return StandardLP(A, b, c, 0.0)
 
 
 def pytest_solver_parallel(name, solver_cls, solver_args, problem_func,
@@ -68,14 +68,11 @@ def pytest_solver_parallel(name, solver_cls, solver_args, problem_func,
     from pycllp.lp import GeneralLP, StandardLP
     from pycllp.solvers import solver_registry
 
-    args = problem_func()
-    if len(args) == 4:
-        slp = StandardLP(*args)
+    lp = problem_func()
+    if isinstance(lp, StandardLP):
+        elp = lp.to_equality_form()
     else:
-        lp = GeneralLP(*args)
-        slp = lp.to_standard_form()
-
-    elp = slp.to_equality_form()
+        elp = lp
 
     solver = solver_cls(*solver_args)
     elp.init(solver)

@@ -24,20 +24,22 @@ def test_noncl_solvers(name, solver_cls, problem_name, problem_func):
 
 def pytest_solver(name, solver_cls, solver_args, problem_func):
     print("Testing Vanderbei {} with solver {}...".format(problem_func, name))
-    from pycllp.lp import GeneralLP
+    from pycllp.lp import StandardLP
 
-    args = list(problem_func())
-    xopt = args.pop()
-    lp = GeneralLP(*args)
-    slp = lp.to_standard_form()
+    lp, xopt = problem_func()
+    ncols = lp.ncols
+    print(ncols)
+    if isinstance(lp, StandardLP):
+        elp = lp.to_equality_form()
+    else:
+        elp = lp
 
     solver = solver_cls(*solver_args)
-    slp.init(solver)
-    slp.solve(solver, verbose=2)
+    elp.init(solver)
+    elp.solve(solver, verbose=2)
 
     np.testing.assert_equal(solver.status, 0)
-    np.testing.assert_almost_equal(np.squeeze(solver.x), xopt,
-                                   decimal=2)
+    np.testing.assert_allclose(solver.x[0, :ncols], xopt, rtol=1e-6, atol=1e-6)
 
 @pytest.mark.cl
 @pytest.mark.parametrize("device,name,solver_cls,problem_func",
