@@ -24,7 +24,7 @@ class GlpkSolver(BaseSolver):
 
         for i in range(nlp):
             status[i] = glpk_solve(ia, ja, ar, b[i, :], c[i, :], x[i, :])
-        print(x)
+
         self.x = x
         self.status = status
         return status

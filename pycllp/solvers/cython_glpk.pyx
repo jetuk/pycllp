@@ -25,6 +25,8 @@ cdef extern from "glpk.h":
     int GLP_MSG_OFF = 0 # no output
     int GLP_MSG_ERR = 1 # warning and error messages only
     int GLP_MSG_ON = 2 # normal output
+    int GLP_MSG_ALL = 3 # all output
+    int GLP_MSG_DBG = 4 # debug output
 
     glp_prob* glp_create_prob()
     void glp_init_smcp(glp_smcp *parm)
@@ -81,7 +83,7 @@ def glpk_solve(int[:] ia, int[:] ja, double[:] ar, double[:] b, double[:] c, dou
 
     ret = glp_simplex(prob, &smcp)
 
-    for i in range(m):
+    for i in range(n):
         x[i] = glp_get_col_prim(prob, i+1)
 
     return ret
