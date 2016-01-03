@@ -5,13 +5,12 @@ Here is an implementation of a path following interior point method.
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 #define real double
 #include "ldl.h"
-#define EPS 1.0e-4f
-#define EPS2 1.0e-12f
-#define MAX_ITER 50
+#define EPS 1.0e-6f
+#define MAX_ITER 200
 
 
 __kernel void initialize_xzyw(int m, int n,
-  __global double* x, __global double* z, __global double* y, __global double* w) {
+  __global double* x, __global double* z, __global double* y) {
   /* Initialize the arrays x, z, y and w to unity. */
   int i, j;
   int gid = get_global_id(0);
@@ -19,7 +18,6 @@ __kernel void initialize_xzyw(int m, int n,
 
   for (i=0; i<m; i++) {
     y[i*gsize+gid] = 1.0;
-    w[i*gsize+gid] = 1.0;
   }
   for (j=0; j<n; j++) {
     x[j*gsize+gid] = 1.0;
@@ -28,8 +26,8 @@ __kernel void initialize_xzyw(int m, int n,
 }
 
 __kernel void standard_primal_normal(int m, int n, __global real* A,
-  __global double* x, __global double* z, __global double* y, __global double* w,
-  __global double* dx, __global double* dz, __global double* dy, __global double* dw,
+  __global double* x, __global double* z, __global double* y,
+  __global double* dx, __global double* dz, __global double* dy,
   __global real* b, __global real* c, __global real* L, __global real* D,
   __global double* S, __global int* status, int verbose) {
   /* Solve a set of linear programmes in standard form using the primal
@@ -58,7 +56,7 @@ __kernel void standard_primal_normal(int m, int n, __global real* A,
   double normr, norms, rho, sigma;
   double gamma, mu;
   double theta;
-  double delta = 0.02f;
+  double delta = 0.1f;
   double r = 0.9;
   double Aty, Atdy, tmp;
 
@@ -71,16 +69,11 @@ __kernel void standard_primal_normal(int m, int n, __global real* A,
     */
     normr = 0.0;
     for (i=0; i<m; i++) {
-      //printf("%8.5e \n", b[i*gsize+gid]);
-      rho = b[i*gsize+gid] - w[i*gsize+gid];
+      rho = b[i*gsize+gid];
       for (j=0; j<n; j++) {
         rho -= A[i*n+j]*x[j*gsize+gid];
       }
-
       normr += pown(rho, 2);
-      //normr += fabs(rho);
-      //printf("%8.5e %8.5e %8.5e %8.5e ", rho, pown(rho, 2), normr, sqrt(normr));
-      //printf("%8.5e %8.5e %8.5e %8.5e\n", rho, b[i*gsize+gid], w[i*gsize+gid], b[i*gsize+gid] - w[i*gsize+gid]);
     }
     normr = sqrt(normr);
 
@@ -103,9 +96,6 @@ __kernel void standard_primal_normal(int m, int n, __global real* A,
       gamma = z'x + y'w
     */
     gamma = 0.0;
-    for (i=0; i<m; i++) {
-      gamma += w[i*gsize+gid]*y[i*gsize+gid];
-    }
     for (j=0; j<n; j++) {
       gamma += z[j*gsize+gid]*x[j*gsize+gid];
     }
@@ -135,21 +125,10 @@ __kernel void standard_primal_normal(int m, int n, __global real* A,
     mu = delta * gamma / (n + m);
 
     // solve the primal normal equations
-    solve_primal_normal(m, n, A, x, z, y, w, b, c, mu, L, D, S, dy, 1e-8);
+    solve_primal_normal(m, n, A, x, z, y, b, c, mu, L, D, S, dy, 1e-6);
     theta = 0.0;
 
     // compute other coordinating deltas and theta
-    //printf("  dy      dw\n");
-    for (i=0; i<m; i++) {
-      //tmp = 1.0f/y[i*gsize+gid];
-      //dw[i*gsize+gid] = mu*tmp - w[i*gsize+gid] - w[i*gsize+gid]*dy[i*gsize+gid]*tmp;
-
-      dw[i*gsize+gid] = (mu - w[i*gsize+gid]*dy[i*gsize+gid])/y[i*gsize+gid] - w[i*gsize+gid];
-
-      theta = fmax(theta, (double)fmax(-dw[i*gsize+gid]/w[i*gsize+gid], -dy[i*gsize+gid]/y[i*gsize+gid]));
-      //printf("%8.1e %8.1e %8.1e %8.1e %8.1e %8.1e\n", y[i*gsize+gid], w[i*gsize+gid], dy[i*gsize+gid], dw[i*gsize+gid], -dw[i*gsize+gid]/w[i*gsize+gid], -dy[i*gsize+gid]/y[i*gsize+gid]);
-    }
-    //printf("\n dx: \n");
 
     //printf("  dx      dz\n");
     for (j=0; j<n; j++) {
@@ -190,7 +169,6 @@ __kernel void standard_primal_normal(int m, int n, __global real* A,
     //printf("theta: %8.1e\n", theta);
 
     for (i=0; i<m; i++) {
-      w[i*gsize+gid] = w[i*gsize+gid] + theta*dw[i*gsize+gid];
       y[i*gsize+gid] = y[i*gsize+gid] + theta*dy[i*gsize+gid];
       //printf("w: %8.5e y: %8.5e\n", w[i*gsize+gid], y[i*gsize+gid]);
     }

@@ -6,7 +6,7 @@ import numpy as np
 import pyopencl as cl
 import time
 
-DTYPE = np.float32
+DTYPE = np.float64
 IDTYPE = np.int32
 
 class ClDensePrimalNormalSolver(BaseSolver):
@@ -46,7 +46,7 @@ class ClDensePrimalNormalSolver(BaseSolver):
         self.buffers['A'] = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=A)
 
         # Create coordinate buffers
-        for coord, size in zip(('x', 'z', 'y', 'w'), (n, n, m, m)):
+        for coord, size in zip(('x', 'z', 'y'), (n, n, m)):
             for pfx in ('', 'd'):
                 self.buffers[pfx+coord] = cl.Buffer(ctx, mf.READ_WRITE, size*cl_size*np.float64().itemsize)
 
@@ -63,8 +63,8 @@ class ClDensePrimalNormalSolver(BaseSolver):
 
         # Argument list for main solve routine, standard_primal_normal
         self.solve_args = [m, n]
-        self.solve_args += [self.buffers[key] for key in ('A', 'x', 'z', 'y', 'w', 'dx', 'dz',
-                            'dy', 'dw', 'b', 'c', 'L', 'D', 'S', 'status')]
+        self.solve_args += [self.buffers[key] for key in ('A', 'x', 'z', 'y', 'dx', 'dz',
+                            'dy', 'b', 'c', 'L', 'D', 'S', 'status')]
 
         if verbose > 0:
             print("Building OpenCL program...")
@@ -76,7 +76,7 @@ class ClDensePrimalNormalSolver(BaseSolver):
         # where the previous solve finished.
         if verbose > 0:
             print("Initializing central path variables on device...")
-        event = self.program.initialize_xzyw(queue, (cl_size,), None, m, n, *[self.buffers[key] for key in ('x', 'z', 'y', 'w')])
+        event = self.program.initialize_xzyw(queue, (cl_size,), None, m, n, *[self.buffers[key] for key in ('x', 'z', 'y')])
         event.wait()
 
         if verbose > 0:
@@ -105,7 +105,7 @@ class ClDensePrimalNormalSolver(BaseSolver):
             print("Executing solver kernel...")
             t = time.time()
 
-        event = self.program.initialize_xzyw(queue, (cl_size,), None, m, n, *[self.buffers[key] for key in ('x', 'z', 'y', 'w')])
+        event = self.program.initialize_xzyw(queue, (cl_size,), None, m, n, *[self.buffers[key] for key in ('x', 'z', 'y')])
         event.wait()
 
         event = self.program.standard_primal_normal(queue, (cl_size, ), None, *(self.solve_args+[np.int32(verbose)]))

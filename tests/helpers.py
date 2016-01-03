@@ -69,6 +69,14 @@ def pytest_solver_parallel(name, solver_cls, solver_args, problem_func,
     from pycllp.solvers import solver_registry
 
     lp = problem_func()
+    try:
+        if len(lp) == 2:
+            lp, xopt = lp
+            if xopt.ndim == 1:
+                xopt = np.expand_dims(xopt, axis=0)
+    except TypeError:
+        xopt = None
+
     if isinstance(lp, StandardLP):
         elp = lp.to_equality_form()
     else:
@@ -79,14 +87,16 @@ def pytest_solver_parallel(name, solver_cls, solver_args, problem_func,
     elp.solve(solver, verbose=2)
     npblms = elp.nproblems
 
-    solver2 = solver_registry[compare_with_solver]()
-    elp.init(solver2)
-    elp.solve(solver2, verbose=0)
-    # Test that the optimal solutions are the same
+    if xopt is None:
+        solver2 = solver_registry[compare_with_solver]()
+        elp.init(solver2)
+        elp.solve(solver2, verbose=0)
+        # Test that the optimal solutions are the same
+        xopt = solver2.x
 
-    np.testing.assert_equal(solver2.status==0, solver.status==0)
+    assert np.all(solver.status==0)
     for i in range(npblms):
         if solver.status[i] == 0:
             # Test only the non-slack variables
             ind = np.where(np.abs(elp.c[i, :]) > 0.0)
-            np.testing.assert_allclose(solver2.x[i, ind], solver.x[i, ind], rtol=1e-3, atol=1e-3)
+            np.testing.assert_allclose(xopt[i, ind], solver.x[i, ind], rtol=1e-3, atol=1e-3)

@@ -74,6 +74,7 @@ def test_cl_solvers_parallel(name, solver_cls):
 
     args = parallel_small_problem()
     lp = StandardLP(*args)
+    lp = lp.to_equality_form()
     ctx = cl.create_some_context()
     queue = cl.CommandQueue(ctx)
     cl_size = lp.nproblems
