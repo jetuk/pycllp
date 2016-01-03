@@ -33,7 +33,6 @@ class DensePrimalNormalSolver(BaseSolver):
         return self.status
 
     def _solve(self, lp, ilp, verbose=0):
-        print(ilp)
         n = lp.ncols
         m = lp.nrows
 
@@ -50,7 +49,7 @@ class DensePrimalNormalSolver(BaseSolver):
         normr0 = sys.float_info.max
         norms0 = sys.float_info.max
 
-        delta = 0.02
+        delta = 0.1
         r = 0.9
 
         status = 5
@@ -81,32 +80,16 @@ class DensePrimalNormalSolver(BaseSolver):
                 break  # DUAL INFEASIBLE (unreliable)
 
             # Create system of primal normal equations
-            dy = solve_primal_normal(A, x, z, y, b, c, mu, delta=1e-8)
-
-            AA = (A*x/z).dot(A.T)
-
-            bb = b - A.dot(x) - (A*x/z).dot(c - A.T.dot(y) + mu/x)
-
-            #L, skipped = modified_cholesky(AA)
-            #dy = forward_backward(L, L.T, -bb)
-            #
-            # print(skipped)
-
-            # Solve the system for dy
-            #dy = forward_backward_modified_ldl(AA, -bb)
+            dy = solve_primal_normal(A, x, z, y, b, c, mu, delta=1e-6)
 
             if np.any(np.isnan(dy)):
-                status = 2
+                status = 3
                 break
-            #try:
-            #    dy = np.squeeze(np.linalg.solve(-AA, bb))
-            #except np.linalg.LinAlgError:
-            #    status = 2
-            #    break
+
             dx = (c - A.T.dot(y) + mu/x - A.T.dot(dy))*x/z
             dz = (mu - x*z - z*dx)/x
 
-            theta = max(np.max(-dx/x), np.max(-dz/z), np.max(-dy/y))
+            theta = max(np.max(-dx/x), np.max(-dz/z))
             theta = min(r/theta, 1.0)
 
             x += theta*dx
