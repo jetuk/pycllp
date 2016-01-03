@@ -31,7 +31,9 @@ class BaseGeneralSolver(BaseSolver):
 
 
 # register solvers
-from .cython import CyHSDSolver
+# Cython HSD solver is for standard LPs, not equality LPs for which this library & tests
+# are current setup. TODO fix this.
+#from .cython import CyHSDSolver
 #from .hsd import HSDSolver
 from .cl import ClDensePrimalNormalSolver
 from .pathfollowing import DensePathFollowingSolver
