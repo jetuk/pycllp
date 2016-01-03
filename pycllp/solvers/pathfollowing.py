@@ -56,10 +56,7 @@ class DensePathFollowingSolver(BaseSolver):
         # Allocate memory for arrays.
 
         # Step direction
-        dx = np.zeros(n)
         dxy = np.zeros(m2)
-        dy = np.zeros(m)
-        dz = np.zeros(n)
         # infeasibilites
         rho = np.zeros(m)
         sigma = np.zeros(n)
@@ -157,7 +154,7 @@ class DensePathFollowingSolver(BaseSolver):
 
             # STEP 5: Ratio test to find step length.
 
-            theta = max(0.0, np.max(-dx/x), np.max(-dz/z), np.max(-dy/y))
+            theta = max(0.0, np.max(-dx/x), np.max(-dz/z))
             theta = min(r/theta, 1.0)
 
             # STEP 6: Step to new point
