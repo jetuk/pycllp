@@ -142,9 +142,9 @@ def solve_primal_normal(A, x, z, y, b, c, mu, delta=1e-6, tolerance=1e-6):
     cdef int nref = 0
     while np.max(r) > tolerance and nref < 5:
         print("Refinement!", nref, np.max(r), dy)
-        forward_backward_ldl(L, D, r)
+        r = forward_backward_ldl(L, D, r)
         for i in range(m):
-            dy[i] += r[i]
+            dy[i] -= r[i]
         residual_primal_normal(dy, A, x, z, y, b, c, mu, r)
         nref += 1
 
