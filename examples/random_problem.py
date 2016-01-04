@@ -24,13 +24,6 @@ def random_problem(m, n, density, nproblems, seed=0):
     b = (0.5+np.random.rand(nproblems, m))
     c = (0.5+np.random.rand(nproblems, n))
 
-    # Create sparse matrix with scipy.sparse
-
-    old_A_data = A.data.copy()
-    A.set_num_problems(nproblems)
-    # TODO make this random.
-    A.data = np.ones(A.data.shape)*old_A_data
-
     return A, b, c, 0.0
 
 
@@ -49,6 +42,7 @@ def solve(N, NP, solver_name):
     args = random_problem(N, N, 0.1, NP)
 
     slp = StandardLP(*args)
+    slp = slp.to_equality_form()
 
     solver = solver_cls(*solver_args)
     slp.init(solver)
