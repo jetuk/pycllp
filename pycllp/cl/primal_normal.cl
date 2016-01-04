@@ -5,7 +5,7 @@ Here is an implementation of a path following interior point method.
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 #define real double
 #include "ldl.h"
-#define EPS 1.0e-6f
+#define EPS 1.0e-8f
 #define MAX_ITER 200
 
 
@@ -111,12 +111,12 @@ __kernel void standard_primal_normal(int m, int n, __global real* A,
       break;  // OPTIMAL
     }
 
-    if (normr > 10*normr0 || isnan(normr)) {
+    if (normr > 10*normr0 && normr > EPS) {
       stat = 2;
       break;  // PRIMAL INFEASIBLE (unreliable)
     }
 
-    if (norms > 10*norms0 || isnan(norms)) {
+    if (norms > 10*norms0 && norms > EPS) {
       stat = 4;
       break;  // DUAL INFEASIBLE (unreliable)
     }
@@ -126,11 +126,9 @@ __kernel void standard_primal_normal(int m, int n, __global real* A,
 
     // solve the primal normal equations
     solve_primal_normal(m, n, A, x, z, y, b, c, mu, L, D, S, dy, 1e-6);
-    theta = 0.0;
 
     // compute other coordinating deltas and theta
-
-    //printf("  dx      dz\n");
+    theta = 0.0;
     for (j=0; j<n; j++) {
       Aty = 0.0f;
       Atdy = 0.0f;
@@ -138,45 +136,21 @@ __kernel void standard_primal_normal(int m, int n, __global real* A,
         Aty += A[i*n+j]*y[i*gsize+gid];
         Atdy += A[i*n+j]*dy[i*gsize+gid];
       }
-      tmp = x[j*gsize+gid]/z[j*gsize+gid];
-
-      dx[j*gsize+gid] = c[j*gsize+gid]*tmp - Aty*tmp + mu*tmp/x[j*gsize+gid] - Atdy*tmp;
-
-      if (iter > 10) {
-        //printf("%8.5e %8.5e %8.5e\n", tmp, z[j*gsize+gid], x[j*gsize+gid]);
-      if (j % 10 == 0) {
-        //printf("\n");
-      }
-      }
-
-
-      //printf("%8.1e ", dx[j*gsize+gid]);
-      //dx[j*gsize+gid] *= x[j*gsize+gid];
-      //dx[j*gsize+gid] += mu;
-      //dx[j*gsize+gid] /= z[j*gsize+gid];
-
-      //tmp = 1.0/x[j*gsize+gid];
-      //dz[j*gsize+gid] = mu*tmp - z[j*gsize+gid] - z[j*gsize+gid]*dx[j*gsize+gid]*tmp;
-
+      dx[j*gsize+gid] = (c[j*gsize+gid] - Aty + mu/x[j*gsize+gid] - Atdy)*x[j*gsize+gid]/z[j*gsize+gid];
       dz[j*gsize+gid] = (mu - z[j*gsize+gid]*dx[j*gsize+gid])/x[j*gsize+gid] - z[j*gsize+gid] ;
 
       theta = fmax(theta, (double)fmax(-dz[j*gsize+gid]/z[j*gsize+gid], -dx[j*gsize+gid]/x[j*gsize+gid]));
-      //printf("%d %8.1e %8.1e %8.1e %8.1e %8.1e %8.1e\n", gid, x[j*gsize+gid], z[j*gsize+gid], dx[j*gsize+gid], dz[j*gsize+gid], -dz[j*gsize+gid]/z[j*gsize+gid], -dx[j*gsize+gid]/x[j*gsize+gid]); //, x[j*gsize+gid]/z[j*gsize+gid]);
     }
-    //printf("theta: %8.1e\n", theta);
-    theta = fmin(r/theta, 1.0);
 
-    //printf("theta: %8.1e\n", theta);
+    theta = fmin(r/theta, 1.0);
 
     for (i=0; i<m; i++) {
       y[i*gsize+gid] = y[i*gsize+gid] + theta*dy[i*gsize+gid];
-      //printf("w: %8.5e y: %8.5e\n", w[i*gsize+gid], y[i*gsize+gid]);
     }
 
     for (j=0; j<n; j++) {
       z[j*gsize+gid] = z[j*gsize+gid] + theta*dz[j*gsize+gid];
       x[j*gsize+gid] = x[j*gsize+gid] + theta*dx[j*gsize+gid];
-      //printf("z: %8.5e x: %8.5e\n", z[j*gsize+gid], x[j*gsize+gid]);
     }
 
     normr0 = normr;
