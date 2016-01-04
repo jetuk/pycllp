@@ -67,6 +67,7 @@ def glpk_solve(int[:] ia, int[:] ja, double[:] ar, double[:] b, double[:] c, dou
 
     prob = glp_create_prob()
     glp_init_smcp(&smcp)
+    smcp.msg_lev = GLP_MSG_ERR
     glp_set_obj_dir(prob, GLP_MAX)
 
     glp_add_rows(prob, m)
