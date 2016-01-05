@@ -246,22 +246,25 @@ void forward_backward_primal_normal(int m, int n, __global real* A,
   int i, j, k;
   int gid = get_global_id(0);
   int gsize = get_global_size(0);
+  double Si, Sj;
 
   // Forward substitution
   for (i=0; i<m; i++) {
+    Si = S[i*gsize+gid];
     for (j=0; j<i; j++) {
-      S[i*gsize+gid] -= S[j*gsize+gid]*L[tri_index(i, j, gsize, gid)]*D[j*gsize+gid];
+      Si -= S[j*gsize+gid]*L[tri_index(i, j, gsize, gid)]*D[j*gsize+gid];
     }
-
-    S[i*gsize+gid] /= D[i*gsize+gid];
+    S[i*gsize+gid] = Si/D[i*gsize+gid];
   }
 
   // Backward substitution
   for (j=m-1; j>=0; j--) {
+    Sj = S[j*gsize+gid];
     for (i=j+1; i<m; i++) {
-      S[j*gsize+gid] -= S[i*gsize+gid]*L[tri_index(i, j, gsize, gid)];
+      Sj -= S[i*gsize+gid]*L[tri_index(i, j, gsize, gid)];
     }
-    dy[j*gsize+gid] = dy[j*gsize+gid] + S[j*gsize+gid];
+    S[j*gsize+gid] = Sj;
+    dy[j*gsize+gid] += Sj;
   }
 }
 

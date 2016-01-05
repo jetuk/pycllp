@@ -563,7 +563,6 @@ class StandardLP(EqualityLP):
         for row in range(self.nrows):
             # Add a slack variable fo each row
             col = lp.add_col([row], [1.0], 0.0)
-            print(col)
 
         return lp
 
