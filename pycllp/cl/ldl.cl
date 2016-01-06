@@ -160,7 +160,7 @@ double primal_normal_rhs_i(int i, int m, int n, int size, int gid, __global real
   return -rhs;
 }
 
-void factor_primal_normal(int m, int n, __global real* A,
+__kernel void factor_primal_normal(int m, int n, __global real* A,
   __global double* x, __global double* z, __global double* y,
   __global real* b, __global real* c, real mu,
   __global real* L, __global real* D, real delta) {
@@ -234,7 +234,7 @@ void factor_primal_normal(int m, int n, __global real* A,
 }
 
 
-void forward_backward_primal_normal(int m, int n, __global real* A,
+__kernel void forward_backward_primal_normal(int m, int n, __global real* A,
   __global double* x, __global double* z, __global double* y,
   __global real* b, __global real* c, real mu,
   __global real* L, __global real* D, __global double* S, __global double* dy) {
