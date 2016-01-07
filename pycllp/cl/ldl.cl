@@ -160,6 +160,26 @@ double primal_normal_rhs_i(int i, int m, int n, int size, int gid, __global real
   return -rhs;
 }
 
+
+double AXZAt_absmax(int m, int n, __global real* A,
+  __global double* x, __global double* z) {
+  /* Return max(|AXZAt|)
+  */
+  int i, j;
+  int gid = get_global_id(0);
+  int gsize = get_global_size(0);
+  double beta;
+  // estimate beta for modified decomposition - see Nocedal & Wright
+  beta = 0.0f;
+  for (j=0; j<m; j++) {
+    for (i=0; i<=j; i++) {
+        beta = fmax(beta, fabs(AXZAt_ij(i, j, m, n, gsize, gid, A, x, z)));
+    }
+  }
+  beta = sqrt(beta);
+  return beta;
+}
+
 __kernel void factor_primal_normal(int m, int n, __global real* A,
   __global double* x, __global double* z, __global double* y,
   __global real* b, __global real* c, real mu,
@@ -193,14 +213,7 @@ __kernel void factor_primal_normal(int m, int n, __global real* A,
   int gsize = get_global_size(0);
   double Dj, Lij, theta, beta;
 
-  // estimate beta for modified decomposition - see Nocedal & Wright
-  beta = 0.0f;
-  for (j=0; j<m; j++) {
-    for (i=0; i<=j; i++) {
-        beta = fmax(beta, fabs(AXZAt_ij(i, j, m, n, gsize, gid, A, x, z)));
-    }
-  }
-  beta = sqrt(beta);
+  beta = AXZAt_absmax(m, n, A, x, z);
 
   for (j=0; j<m; j++) {
     // iterate through the columns of the matrix
