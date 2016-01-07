@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.sparse import rand, csc_matrix
 from pycllp._ipo import ldltfac as c_ldltfac, getAAt, inv_clo
-from pycllp.sparse_ldl import LDLTFAC
+from pycllp.old_ldl import LDLTFAC
 import pytest
 
 

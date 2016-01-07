@@ -3,6 +3,8 @@ Test of the LDL implementations provided in pycllp.ldl
 """
 
 from pycllp.ldl import cholesky, modified_ldl, ldl, forward_backward, forward_backward_ldl, forward_backward_modified_ldl
+from pycllp import sparse_ldl
+from scipy.sparse import csr_matrix, tril, issparse, rand as sparse_rand
 import pytest
 import numpy as np
 DTYPE = np.float64
@@ -25,7 +27,7 @@ def cl_size():
 @pytest.fixture
 def A(m, n):
     """A random positive definite matrix"""
-    A = np.random.rand(m, n)
+    A = sparse_rand(m, n, density=0.1).toarray()
     return np.dot(A, A.T) + np.eye(m)*m
 
 
@@ -61,15 +63,49 @@ def test_cholesky(A):
     np.testing.assert_allclose(np_chlsky, mod_chlsky)
 
 
+def test_sparse_cholesky(A):
+    # Perform decompositions
+    np_chlsky = np.linalg.cholesky(A)
+
+    L = tril(csr_matrix(np_chlsky), format='csr')
+    # Check L is actually sparse!
+    assert len(L.data) < np.product(A.shape)
+    assert issparse(L)
+    # Test sparse implementation
+    py_chlsky = sparse_ldl.cholesky(A, L.indptr, L.indices)
+
+    # Check implementation of Cholesky above is the same as numpy
+    np.testing.assert_allclose(L.data, py_chlsky)
+
+
 def test_modified_ldl(m, n):
     A = np.random.rand(m, n)
     A = np.dot(A, A.T)
     # Perform decompositions
     np_chlsky = cholesky(A)
     D, L = modified_ldl(A)
-    py_chlsky = np.dot(L, np.eye(m)*np.sqrt(D))
+    py_chlsky = L*np.sqrt(D)
     # Check implementation of Cholesky above is the same as numpy
     assert np.any(np.isfinite(py_chlsky))
+
+
+def test_sparse_modified_ldl(m, n):
+    A = sparse_rand(m, n, density=0.025).toarray()
+    A = np.dot(A, A.T)
+    # Perform decompositions
+    np_chlsky = cholesky(A)
+    D, L = modified_ldl(A)
+    py_chlsky = L*np.sqrt(D)
+
+    L = tril(csr_matrix(L), format='csr')
+    # Check L is actually sparse!
+    assert len(L.data) < np.product(A.shape)
+    assert issparse(L)
+
+    spD, spL = sparse_ldl.modified_ldl(A, L.indptr, L.indices)
+    # Check implementation of Cholesky above is the same as numpy
+    np.testing.assert_allclose(spD, D)
+    np.testing.assert_allclose(spL, L.data, atol=1e-7)
 
 
 def test_ldl(A):
@@ -77,7 +113,7 @@ def test_ldl(A):
     np_chlsky = np.linalg.cholesky(A)
     py_ldl_D, py_ldl_L = ldl(A)
     # Check LDL decomposition multiples back to A
-    np.testing.assert_allclose(A, (py_ldl_L*py_ldl_D).dot(py_ldl_L.T))
+    np.testing.assert_allclose(np_chlsky, py_ldl_L*np.sqrt(py_ldl_D))
 
 
 def test_solve_ldl(A, b):
