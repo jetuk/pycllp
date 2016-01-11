@@ -476,7 +476,7 @@ double residual_primal_normal(int m, int n, __global real* A,
   double r;
 
   for (i=0; i<m; i++) {
-    r = 0.0;//primal_normal_rhs_i(i, m, n, gsize, gid, A, x, z, y, b, c, mu);
+    r = primal_normal_rhs_i(i, m, n, gsize, gid, A, x, z, y, b, c, mu);
     for (j=0; j<m; j++) {
         r -= AXZAt_ij(i, j, m, n, gsize, gid, A, x, z)*dy[j*gsize+gid];
     }
@@ -596,5 +596,5 @@ __kernel void sparse_solve_primal_normal(int m, int n, __global real* A,
     maxr = residual_primal_normal(m, n, A, x, z, y, b, c, mu, dy, S);
     nref += 1;
   }
-  
+
 }
