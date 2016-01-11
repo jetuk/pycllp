@@ -65,6 +65,43 @@ double dual_infeasibility(int m, int n, __global real* A, __global double* z, __
   return sqrt(norms);
 }
 
+__kernel void primal_normal_step(int m, int n, __global real* A,
+  __global double* x, __global double* z, __global double* y,
+  __global double* dx, __global double* dz, __global double* dy, __global real* c, double r, double mu) {
+  /*
+    Calculate dx and dz from the solution for dy, and then step the coordinate variables
+  */
+  int i, j;
+  int gid = get_global_id(0);
+  int gsize = get_global_size(0);
+  double theta;
+  double Aty, Atdy;
+  // compute other coordinating deltas and theta
+  theta = 0.0;
+  for (j=0; j<n; j++) {
+    Aty = 0.0f;
+    Atdy = 0.0f;
+    for (i=0; i<m; i++) {
+      Aty += A[i*n+j]*y[i*gsize+gid];
+      Atdy += A[i*n+j]*dy[i*gsize+gid];
+    }
+    dx[j*gsize+gid] = (c[j*gsize+gid] - Aty + mu/x[j*gsize+gid] - Atdy)*x[j*gsize+gid]/z[j*gsize+gid];
+    dz[j*gsize+gid] = (mu - z[j*gsize+gid]*dx[j*gsize+gid])/x[j*gsize+gid] - z[j*gsize+gid] ;
+    theta = fmax(theta, fmax(-dz[j*gsize+gid]/z[j*gsize+gid], -dx[j*gsize+gid]/x[j*gsize+gid]));
+  }
+  theta = fmin(r/theta, 1.0);
+
+  for (i=0; i<m; i++) {
+    y[i*gsize+gid] += theta*dy[i*gsize+gid];
+  }
+
+  for (j=0; j<n; j++) {
+    z[j*gsize+gid] += theta*dz[j*gsize+gid];
+    x[j*gsize+gid] += theta*dx[j*gsize+gid];
+  }
+}
+
+
 __kernel void standard_primal_normal(int m, int n, __global real* A,
   __global double* x, __global double* z, __global double* y,
   __global double* dx, __global double* dz, __global double* dy,
@@ -95,7 +132,6 @@ __kernel void standard_primal_normal(int m, int n, __global real* A,
   double norms0 = HUGE_VALF/10;
   double normr, norms;
   double gamma, mu;
-  double theta;
   double delta = 0.1f;
   double r = 0.9;
   double Aty, Atdy, tmp;
@@ -139,38 +175,13 @@ __kernel void standard_primal_normal(int m, int n, __global real* A,
     // barrier parameter
     mu = delta * gamma / (n + m);
 
-    // solve the primal normal equations
+    // solve the primal normal equations (for dy)
     solve_primal_normal(m, n, A, x, z, y, b, c, mu, L, D, S, dy, 1e-6);
-
-    // compute other coordinating deltas and theta
-    theta = 0.0;
-    for (j=0; j<n; j++) {
-      Aty = 0.0f;
-      Atdy = 0.0f;
-      for (i=0; i<m; i++) {
-        Aty += A[i*n+j]*y[i*gsize+gid];
-        Atdy += A[i*n+j]*dy[i*gsize+gid];
-      }
-      dx[j*gsize+gid] = (c[j*gsize+gid] - Aty + mu/x[j*gsize+gid] - Atdy)*x[j*gsize+gid]/z[j*gsize+gid];
-      dz[j*gsize+gid] = (mu - z[j*gsize+gid]*dx[j*gsize+gid])/x[j*gsize+gid] - z[j*gsize+gid] ;
-
-      theta = fmax(theta, (double)fmax(-dz[j*gsize+gid]/z[j*gsize+gid], -dx[j*gsize+gid]/x[j*gsize+gid]));
-    }
-
-    theta = fmin(r/theta, 1.0);
-
-    for (i=0; i<m; i++) {
-      y[i*gsize+gid] = y[i*gsize+gid] + theta*dy[i*gsize+gid];
-    }
-
-    for (j=0; j<n; j++) {
-      z[j*gsize+gid] = z[j*gsize+gid] + theta*dz[j*gsize+gid];
-      x[j*gsize+gid] = x[j*gsize+gid] + theta*dx[j*gsize+gid];
-    }
+    // step the coordinates
+    primal_normal_step(m, n, A, x, z, y, dx, dz, dy, c, r, mu);
 
     normr0 = normr;
     norms0 = norms;
-
   }
 
   status[gid] = stat;
