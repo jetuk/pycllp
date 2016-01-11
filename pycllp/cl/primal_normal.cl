@@ -5,8 +5,10 @@ Here is an implementation of a path following interior point method.
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 #define real double
 #include "ldl.h"
-#define EPS 1.0e-8f
+#define EPS 1.0e-6f
 #define MAX_ITER 200
+#define DELTA 0.02
+#define R 0.9
 
 
 __kernel void initialize_xzyw(int m, int n,
@@ -132,8 +134,8 @@ __kernel void standard_primal_normal(int m, int n, __global real* A,
   double norms0 = HUGE_VALF/10;
   double normr, norms;
   double gamma, mu;
-  double delta = 0.1f;
-  double r = 0.9;
+  double delta = DELTA;
+  double r = R;
   double Aty, Atdy, tmp;
 
   for (iter=0; iter<MAX_ITER; iter++) {
@@ -220,8 +222,8 @@ __kernel void sparse_standard_primal_normal(int m, int n, __global real* A,
   double norms0 = HUGE_VALF/10;
   double normr, norms;
   double gamma, mu;
-  double delta = 0.02f;
-  double r = 0.9;
+  double delta = DELTA;
+  double r = R;
   double Aty, Atdy, tmp;
 
   for (iter=0; iter<MAX_ITER; iter++) {
