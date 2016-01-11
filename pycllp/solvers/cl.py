@@ -144,7 +144,7 @@ class ClSparsePrimalNormalSolver(BaseSolver):
         from scipy.sparse import csr_matrix, tril
 
         if verbose > 0:
-            print("Initializing ClDensePrimalNormalSolver solver...")
+            print("Initializing ClSparsePrimalNormalSolver solver...")
         ctx = self.ctx
         queue = self.queue
         mf = cl.mem_flags
