@@ -274,6 +274,83 @@ def test_cl_solve_primal_normal_ldl(m, n, cl_size):
 
 
 @pytest.mark.cl
+def test_cl_sparse_solve_primal_normal_ldl(m, n, cl_size):
+    """ Test the CL implentation of LDL algorithm.
+
+    This tests a series (cl_size) of matrices against the Python implementation.
+    """
+    from scipy.sparse import csr_matrix, tril, rand
+    from pycllp.ldl import solve_primal_normal
+    np.random.seed(123456)
+    # Random system matrix (not positive definite by itself)
+    A = np.c_[rand(m, n, density=0.025).toarray(), np.eye(m)].astype(dtype=DTYPE)
+    x = np.random.rand(m+n, cl_size).astype(dtype=A.dtype)
+    z = np.random.rand(m+n, cl_size).astype(dtype=A.dtype)
+    y = np.random.rand(m, cl_size).astype(dtype=A.dtype)
+    b = np.random.rand(m, cl_size).astype(dtype=A.dtype)
+    c = np.r_[np.random.rand(n, cl_size), np.zeros((m, cl_size))].astype(dtype=A.dtype)
+    mu = 1.0
+    # First calculate the Python based values for each matrix in AA
+    py_dy = np.empty((m, cl_size)).astype(dtype=A.dtype)
+    for i in range(cl_size):
+        py_dy[:, i] = solve_primal_normal(A, x[:, i], z[:, i], y[:, i], b[:, i], c[:, i], mu)
+
+    # Setup CL context
+    import pyopencl as cl
+    from pycllp.ldl import cl_krnl_ldl
+    ctx = cl.create_some_context()
+    queue = cl.CommandQueue(ctx)
+
+    # Work/Result arrays
+    # Calculate the structure of the decomposition
+    L = np.linalg.cholesky(A.dot(A.T))
+    # Convert to sparse
+    L = tril(csr_matrix(L), format='csr')
+
+    LT = L.transpose().tocsr()
+    LTmap = np.argsort(L.indices, kind='mergesort').astype(np.int32)
+
+    data = L.data.astype(DTYPE)
+    indptr = L.indptr.astype(np.int32)
+    indices = L.indices.astype(np.int32)
+    LTindptr = LT.indptr.astype(np.int32)
+    LTindices = LT.indices.astype(np.int32)
+
+    D = np.empty(cl_size*m, dtype=DTYPE)
+    dy = np.empty(cl_size*m, dtype=DTYPE)
+
+    mf = cl.mem_flags
+    A_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=A)
+    x_g = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=x)
+    z_g = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=z)
+    y_g = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=y)
+    b_g = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=b)
+    c_g = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=c)
+    # Create and compile kernel
+    prg = cl_krnl_ldl(ctx)
+    Ldata_g = cl.Buffer(ctx, mf.READ_WRITE, cl_size*data.nbytes)
+    Lindptr_c = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=indptr)
+    Lindices_c = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=indices)
+    LTindptr_c = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=LTindptr)
+    LTindices_c = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=LTindices)
+    LTmap_c = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=LTmap)
+    D_g = cl.Buffer(ctx, mf.READ_WRITE, D.nbytes)
+    S_g = cl.Buffer(ctx, mf.READ_WRITE, D.nbytes)
+    dy_g = cl.Buffer(ctx, mf.READ_WRITE, dy.nbytes)
+
+    evt = prg.sparse_solve_primal_normal(queue, (cl_size,), None, np.int32(m), np.int32(m+n),
+                            A_g, x_g, z_g, y_g, b_g, c_g, DTYPE(mu), Ldata_g, Lindptr_c, Lindices_c,
+                            LTindptr_c, LTindices_c, LTmap_c, D_g, S_g, dy_g, DTYPE(1e-6))
+    evt.wait()
+    cl.enqueue_copy(queue, dy, dy_g)
+    queue.finish()
+
+    # Compare each solution vector, dy, with the python equivalent.
+    for i in range(cl_size):
+        np.testing.assert_allclose(py_dy[:, i], dy[i::cl_size], rtol=1e-5, atol=1e-5)
+
+
+@pytest.mark.cl
 def test_large_cl_solve_primal_normal_ldl(m, n, cl_size):
     """ Test the CL implentation of LDL algorithm.
 
