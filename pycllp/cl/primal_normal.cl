@@ -25,6 +25,46 @@ __kernel void initialize_xzyw(int m, int n,
   }
 }
 
+double primal_infeasibility(int m, int n, __global real* A, __global double* x, __global double* b) {
+    /* primal infeasibility,
+      rho = b - Ax - w
+      normr = sum(|rho\)
+    */
+  int i, j;
+  int gid = get_global_id(0);
+  int gsize = get_global_size(0);
+  double rho;
+  double normr = 0.0;
+  for (i=0; i<m; i++) {
+    rho = b[i*gsize+gid];
+    for (j=0; j<n; j++) {
+      rho -= A[i*n+j]*x[j*gsize+gid];
+    }
+    normr += pown(rho, 2);
+  }
+  return sqrt(normr);
+}
+
+double dual_infeasibility(int m, int n, __global real* A, __global double* z, __global double* y, __global double* c) {
+  /* dual infeasibility,
+    sigma = c - A'y + z
+    norms = sum(|sigma|)
+  */
+  int i, j;
+  int gid = get_global_id(0);
+  int gsize = get_global_size(0);
+  double sigma;
+  double norms = 0.0;
+  for (j=0; j<n; j++) {
+    sigma = c[j*gsize+gid] + z[j*gsize+gid];
+    for (i=0; i<m; i++) {
+      sigma += -A[i*n+j]*y[i*gsize+gid];
+    }
+    norms += pown(sigma, 2);
+  }
+  return sqrt(norms);
+}
+
 __kernel void standard_primal_normal(int m, int n, __global real* A,
   __global double* x, __global double* z, __global double* y,
   __global double* dx, __global double* dz, __global double* dy,
@@ -53,7 +93,7 @@ __kernel void standard_primal_normal(int m, int n, __global real* A,
 
   double normr0 = HUGE_VALF/10;
   double norms0 = HUGE_VALF/10;
-  double normr, norms, rho, sigma;
+  double normr, norms;
   double gamma, mu;
   double theta;
   double delta = 0.1f;
@@ -61,36 +101,11 @@ __kernel void standard_primal_normal(int m, int n, __global real* A,
   double Aty, Atdy, tmp;
 
   for (iter=0; iter<MAX_ITER; iter++) {
-    /* primal infeasibility,
-      rho = b - Ax - w
-      normr = sum(|rho\)
-    We don't store the entire primal infeasibility vector, but calculate
-    the vector's magnitude for the stopping rule.
-    */
-    normr = 0.0;
-    for (i=0; i<m; i++) {
-      rho = b[i*gsize+gid];
-      for (j=0; j<n; j++) {
-        rho -= A[i*n+j]*x[j*gsize+gid];
-      }
-      normr += pown(rho, 2);
-    }
-    normr = sqrt(normr);
+    // calculate primal infeasibility,
+    normr = primal_infeasibility(m, n, A, x, b);
 
-    /* dual infeasibility,
-      sigma = c - A'y + z
-      norms = sum(|sigma|)
-    Again the whole vector is not stored.
-    */
-    norms = 0.0;
-    for (j=0; j<n; j++) {
-      sigma = c[j*gsize+gid] + z[j*gsize+gid];
-      for (i=0; i<m; i++) {
-        sigma += -A[i*n+j]*y[i*gsize+gid];
-      }
-      norms += pown(sigma, 2);
-    }
-    norms = sqrt(norms);
+    // calculate dual infeasibility,
+    norms = dual_infeasibility(m, n, A, z, y, c);
 
     /* complementarity,
       gamma = z'x + y'w
