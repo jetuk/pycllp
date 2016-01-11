@@ -77,6 +77,7 @@ def forward_backward_ldl(double[:] L, double[:] D, double[:] b):
     Solve the system LDL'x = b, where L and U are upper and lower diagonal
     matrices respectively using forward-backward substitution.
     """
+    cdef int i, j
     x = np.zeros(L.shape[0])
 
     # First let Ly = b, solve for y
