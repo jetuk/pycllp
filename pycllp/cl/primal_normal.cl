@@ -186,3 +186,92 @@ __kernel void standard_primal_normal(int m, int n, __global real* A,
 
   status[gid] = stat;
 }
+
+
+__kernel void sparse_standard_primal_normal(int m, int n, __global real* A,
+  __global double* x, __global double* z, __global double* y,
+  __global double* dx, __global double* dz, __global double* dy,
+  __global real* b, __global real* c,
+  __global real* Ldata, __constant int* Lindptr, __constant int* Lindices,
+  __constant int* LTindptr, __constant int* LTindices, __constant int* LTmap,
+  __global real* D, __global double* S, __global int* status, int verbose) {
+  /* Solve a set of linear programmes in standard form using the primal
+  form of the normal equations.
+
+  This method uses a shared constrain matrix, A, for all work-items. The
+  objective function, c, and constraint bounds, b, however are varied
+  per work-item.
+
+  Usage notes:
+    - The the central path coordinate arrays x, z, y and w are not
+    initialized as part of this routine. They should be initialized prior to
+    first calling this routine. For second or subsequent calls solutions
+    will begin from the position the previous call ended in. This is a useful
+    efficiency when executed repeatidly with slowly varying LPs for which the
+    optimal solution is expected only differ slightly.
+
+  */
+  int i, j, iter;
+  int gid = get_global_id(0);
+  int gsize = get_global_size(0);
+  int stat = 5;
+
+  double normr0 = HUGE_VALF/10;
+  double norms0 = HUGE_VALF/10;
+  double normr, norms;
+  double gamma, mu;
+  double delta = 0.02f;
+  double r = 0.9;
+  double Aty, Atdy, tmp;
+
+  for (iter=0; iter<MAX_ITER; iter++) {
+    // calculate primal infeasibility,
+    normr = primal_infeasibility(m, n, A, x, b);
+
+    // calculate dual infeasibility,
+    norms = dual_infeasibility(m, n, A, z, y, c);
+
+    /* complementarity,
+      gamma = z'x + y'w
+    */
+    gamma = 0.0;
+    for (j=0; j<n; j++) {
+      gamma += z[j*gsize+gid]*x[j*gsize+gid];
+    }
+
+    if (verbose > 1) {
+      printf("%d/%d %2d |rho|: %8.1e  |sigma| %8.1e:  gamma: %8.1e\n", gid, gsize, iter, normr, norms, gamma);
+    }
+
+    /* Check stopping conditions
+    */
+    if(normr < EPS && norms < EPS && gamma < EPS) {
+      stat = 0;
+      break;  // OPTIMAL
+    }
+
+    if (normr > 10*normr0 && normr > EPS) {
+      stat = 2;
+      break;  // PRIMAL INFEASIBLE (unreliable)
+    }
+
+    if (norms > 10*norms0 && norms > EPS) {
+      stat = 4;
+      break;  // DUAL INFEASIBLE (unreliable)
+    }
+
+    // barrier parameter
+    mu = delta * gamma / (n + m);
+
+    // solve the primal normal equations (for dy)
+    sparse_solve_primal_normal(m, n, A, x, z, y, b, c, mu, Ldata, Lindptr, Lindices, LTindptr, LTindices,
+                               LTmap, D, S, dy, 1e-6);
+    // step the coordinates
+    primal_normal_step(m, n, A, x, z, y, dx, dz, dy, c, r, mu);
+
+    normr0 = normr;
+    norms0 = norms;
+  }
+
+  status[gid] = stat;
+}

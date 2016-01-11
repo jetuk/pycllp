@@ -35,7 +35,7 @@ class BaseGeneralSolver(BaseSolver):
 # are current setup. TODO fix this.
 #from .cython import CyHSDSolver
 #from .hsd import HSDSolver
-from .cl import ClDensePrimalNormalSolver
+from .cl import ClDensePrimalNormalSolver, ClSparsePrimalNormalSolver
 from .pathfollowing import DensePathFollowingSolver
 from .normal_eqns import DensePrimalNormalSolver
 from .glpk import GlpkSolver
