@@ -160,17 +160,27 @@ class ClSparsePrimalNormalSolver(BaseSolver):
         # This should now never change!
         if verbose > 0:
             print("Creating buffers...")
-        self.buffers['A'] = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=A)
 
         # Create coordinate buffers
         for coord, size in zip(('x', 'z', 'y'), (n, n, m)):
             for pfx in ('', 'd'):
-                self.buffers[pfx+coord] = cl.Buffer(ctx, mf.READ_WRITE, size*cl_size*np.float64().itemsize)
+                self.buffers[pfx+coord] = cl.Buffer(ctx, mf.READ_WRITE | mf.HOST_READ_ONLY, size*cl_size*np.float64().itemsize)
 
         # The constraint bounds and objective function buffers will only
         # ever be updated by the host to the device, and do not need to read
         self.buffers['b'] = cl.Buffer(ctx, mf.READ_WRITE | mf.HOST_WRITE_ONLY, m*cl_size*DTYPE().itemsize)
         self.buffers['c'] = cl.Buffer(ctx, mf.READ_WRITE | mf.HOST_WRITE_ONLY, n*cl_size*DTYPE().itemsize)
+
+
+        Asp = csr_matrix(A)
+        self.buffers['Adata'] = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=Asp.data.astype(DTYPE))
+        self.buffers['Aindptr'] = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=Asp.indptr.astype(np.int32))
+        self.buffers['Aindices'] = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=Asp.indices.astype(np.int32))
+
+        ATsp = Asp.transpose().tocsr()
+        self.buffers['ATdata'] = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=ATsp.data.astype(DTYPE))
+        self.buffers['ATindptr'] = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=ATsp.indptr.astype(np.int32))
+        self.buffers['ATindices'] = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=ATsp.indices.astype(np.int32))
 
         # Calculate the sparse structure of the decomposition
         L = np.linalg.cholesky(A.dot(A.T))
@@ -198,13 +208,22 @@ class ClSparsePrimalNormalSolver(BaseSolver):
 
         # Argument list for main solve routine, standard_primal_normal
         self.solve_args = [m, n]
-        self.solve_args += [self.buffers[key] for key in ('A', 'x', 'z', 'y', 'dx', 'dz',
-                            'dy', 'b', 'c', 'Ldata', 'Lindptr', 'Lindices', 'LTindptr', 'LTindices', 'LTmap', 'D', 'S', 'status')]
+        self.solve_args += [self.buffers[key] for key in ('Adata', 'Aindptr', 'Aindices', 'ATdata', 'ATindptr', 'ATindices',
+                            'x', 'z', 'y', 'dx', 'dz', 'dy', 'b', 'c', 'Ldata', 'Lindptr', 'Lindices', 'LTindptr', 'LTindices', 'LTmap', 'D', 'S', 'status')]
 
         if verbose > 0:
             print("Building OpenCL program...")
         build_opts = ['-I '+CL_PATH, '-Werror',]
         self.program = cl_program_from_files(ctx, ('primal_normal.cl', 'ldl.cl')).build(options=build_opts)
+
+        if verbose > 0:
+            print("Creating kernels...")
+
+        self.knl_init = self.program.initialize_xzyw
+        self.knl_init.set_args(m, n, *[self.buffers[key] for key in ('x', 'z', 'y')])
+
+        self.knl_solve = self.program.sparse_standard_primal_normal
+        self.knl_solve.set_args(*(self.solve_args+[np.int32(verbose)]))
 
         # Set the coordinate vectors to 1.0
         # This is only done at the beginning, solves after the first begin
@@ -213,6 +232,7 @@ class ClSparsePrimalNormalSolver(BaseSolver):
             print("Initializing central path variables on device...")
         event = self.program.initialize_xzyw(queue, (cl_size,), None, m, n, *[self.buffers[key] for key in ('x', 'z', 'y')])
         event.wait()
+
 
         if verbose > 0:
             print("Solver initialized.")
@@ -231,29 +251,28 @@ class ClSparsePrimalNormalSolver(BaseSolver):
         # Copy new bounds and objective function to device
         if verbose > 0:
             print("Copying to 'b' vectors to device...")
-        cl.enqueue_copy(queue, self.buffers['b'], np.ascontiguousarray(lp.b.T).astype(DTYPE))
+        cl.enqueue_copy(queue, self.buffers['b'], np.ascontiguousarray(lp.b.T).astype(DTYPE), is_blocking=False)
         if verbose > 0:
             print("Copying to 'c' vectors to device...")
-        cl.enqueue_copy(queue, self.buffers['c'], np.ascontiguousarray(lp.c.T).astype(DTYPE))
+        cl.enqueue_copy(queue, self.buffers['c'], np.ascontiguousarray(lp.c.T).astype(DTYPE), is_blocking=False)
         # Solve the program
         if verbose > 0:
             print("Executing solver kernel...")
             t = time.time()
 
-        event = self.program.initialize_xzyw(queue, (cl_size,), None, m, n, *[self.buffers[key] for key in ('x', 'z', 'y')])
-        event.wait()
+        cl.enqueue_nd_range_kernel(queue, self.knl_init, (cl_size, ), None)
+        cl.enqueue_nd_range_kernel(queue, self.knl_solve, (cl_size, ), None)
 
-        event = self.program.sparse_standard_primal_normal(queue, (cl_size, ), None, *(self.solve_args+[np.int32(verbose)]))
-        event.wait()
         if verbose > 0:
             print("Kernel complete in {} seconds.".format(time.time()-t))
             print("Copying 'x' vectors to host...")
 
-        cl.enqueue_copy(queue, self._x, self.buffers['x'])
+        cl.enqueue_copy(queue, self._x, self.buffers['x'], is_blocking=False)
         self.x = self._x.reshape((n, cl_size)).T
         if verbose > 0:
-            print("Copying 'status' vector to hose...")
-        cl.enqueue_copy(queue, self.status, self.buffers['status'])
+            print("Copying 'status' vector to host...")
+        cl.enqueue_copy(queue, self.status, self.buffers['status'], is_blocking=False)
 
+        queue.finish()
         if verbose > 0:
             print("Solve complete.")

@@ -328,6 +328,17 @@ def test_cl_sparse_solve_primal_normal_ldl(m, n, cl_size):
     c_g = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=c)
     # Create and compile kernel
     prg = cl_krnl_ldl(ctx)
+
+    Asp = csr_matrix(A)
+    Adata_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=Asp.data.astype(DTYPE))
+    Aindptr_c = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=Asp.indptr.astype(np.int32))
+    Aindices_c = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=Asp.indices.astype(np.int32))
+
+    ATsp = Asp.transpose().tocsr()
+    ATdata_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=ATsp.data.astype(DTYPE))
+    ATindptr_c = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=ATsp.indptr.astype(np.int32))
+    ATindices_c = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=ATsp.indices.astype(np.int32))
+
     Ldata_g = cl.Buffer(ctx, mf.READ_WRITE, cl_size*data.nbytes)
     Lindptr_c = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=indptr)
     Lindices_c = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=indices)
@@ -339,7 +350,7 @@ def test_cl_sparse_solve_primal_normal_ldl(m, n, cl_size):
     dy_g = cl.Buffer(ctx, mf.READ_WRITE, dy.nbytes)
 
     evt = prg.sparse_solve_primal_normal(queue, (cl_size,), None, np.int32(m), np.int32(m+n),
-                            A_g, x_g, z_g, y_g, b_g, c_g, DTYPE(mu), Ldata_g, Lindptr_c, Lindices_c,
+                            Adata_g, Aindptr_c, Aindices_c, ATdata_g, ATindptr_c, ATindices_c, x_g, z_g, y_g, b_g, c_g, DTYPE(mu), Ldata_g, Lindptr_c, Lindices_c,
                             LTindptr_c, LTindices_c, LTmap_c, D_g, S_g, dy_g, DTYPE(1e-6))
     evt.wait()
     cl.enqueue_copy(queue, dy, dy_g)

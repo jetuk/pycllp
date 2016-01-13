@@ -137,6 +137,64 @@ double AXZAt_ii(int i, int m, int n, int size, int gid, __global real* A,
   return a;
 }
 
+double sparse_AXZAt_ij(int i, int j, int m, int n,
+    __global real* Adata, __global int* Aindptr, __global int* Aindices,
+    __global double* x, __global double *z) {
+  int gid = get_global_id(0);
+  int gsize = get_global_size(0);
+  int ik, jk, ikk, jkk, icol, jcol;
+
+  real a = 0.0;
+
+  ik = Aindptr[i];
+  ikk = Aindptr[i+1];
+  jk = Aindptr[j];
+  jkk = Aindptr[j+1];
+
+  // now loop through the columns of the two rows (i & j) and perform
+  // a += A[i, k]*x[k]*A[j, k]/z[k]
+  while (ik < ikk && jk < jkk) {
+    icol = Aindices[ik];
+    jcol = Aindices[jk];
+    // if columns are the same perform dot product
+    if (icol == jcol) {
+        a += Adata[ik]*Adata[jk]*x[icol*gsize+gid]/z[icol*gsize+gid];;
+        ik += 1;
+        jk += 1;
+    } else if (icol < jcol) {
+        ik += 1;
+    } else {
+        jk += 1;
+    }
+  }
+
+  return a;
+}
+
+double sparse_AXZAt_ii(int i, int m, int n, __global real* Adata, __global int* Aindptr, __global int* Aindices,
+                       __global double* x, __global double* z) {
+  /* Compute the (i, i) entry of matrix A(X/Z)A'
+  */
+  int gid = get_global_id(0);
+  int gsize = get_global_size(0);
+  int ik, ikk, icol;
+
+  real a = 0.0;
+
+  ik = Aindptr[i];
+  ikk = Aindptr[i+1];
+
+  // now loop through the columns of the two rows (i & j) and perform
+  // a += A[i, k]*x[k]*A[j, k]/z[k]
+  while (ik < ikk) {
+    icol = Aindices[ik];
+    a += pown(Adata[ik], 2)*x[icol*gsize+gid]/z[icol*gsize+gid];;
+    ik += 1;
+  }
+
+  return a;
+}
+
 double primal_normal_rhs_i(int i, int m, int n, int size, int gid, __global real* A,
   __global double* x, __global double* z, __global double* y,
   __global real* b,  __global real* c, real mu) {
@@ -160,6 +218,45 @@ double primal_normal_rhs_i(int i, int m, int n, int size, int gid, __global real
   return -rhs;
 }
 
+double sparse_primal_normal_rhs_i(int i, int m, int n, int size, int gid,
+  __global real* Adata, __global int* Aindptr, __global int* Aindices,
+  __global real* ATdata, __global int* ATindptr, __global int* ATindices,
+  __global double* x, __global double* z, __global double* y,
+  __global real* b,  __global real* c, real mu) {
+  /* Compute the ith element of the right-hand side vector of the normal equations
+
+    RHS = b - Ax - (AX/Z)*(c - A'y + mu/X)
+  */
+
+  real rhs = b[i*size+gid];
+  real Aty, Ax;
+  int j, it;
+  int k, kk;
+  int kt, kkt;
+
+  k = Aindptr[i];
+  kk = Aindptr[i+1];
+
+  while (k < kk) {
+    j = Aindices[k];
+    Aty = 0.0;
+    kt = ATindptr[j];
+    kkt = ATindptr[j+1];
+
+    while (kt < kkt) {
+      it = ATindices[kt];
+      Aty += ATdata[kt]*y[it*size+gid];
+      kt += 1;
+    }
+    rhs += -Adata[k]*x[j*size+gid];
+    rhs += -Adata[k]*x[j*size+gid]*(c[j*size+gid] - Aty + mu/x[j*size+gid])/z[j*size+gid];
+
+    k += 1;
+  }
+  return -rhs;
+}
+
+
 
 double AXZAt_absmax(int m, int n, __global real* A,
   __global double* x, __global double* z) {
@@ -180,8 +277,7 @@ double AXZAt_absmax(int m, int n, __global real* A,
   return beta;
 }
 
-double AXZAt_diag_absmax(int m, int n, __global real* A,
-  __global double* x, __global double* z) {
+double AXZAt_diag_absmax(int m, int n, __global real* A, __global double* x, __global double* z) {
   /* Return max(|AXZA'|)
   */
   int i, j;
@@ -192,6 +288,23 @@ double AXZAt_diag_absmax(int m, int n, __global real* A,
   beta = 0.0f;
   for (j=0; j<m; j++) {
     beta = fmax(beta, fabs(AXZAt_ii(j, m, n, gsize, gid, A, x, z)));
+  }
+  beta = sqrt(beta);
+  return beta;
+}
+
+double sparse_AXZAt_diag_absmax(int m, int n, __global real* Adata, __global int* Aindptr, __global int* Aindices,
+                                __global double* x, __global double* z) {
+  /* Return max(|AXZA'|)
+  */
+  int i, j;
+  int gid = get_global_id(0);
+  int gsize = get_global_size(0);
+  double beta;
+  // estimate beta for modified decomposition - see Nocedal & Wright
+  beta = 0.0f;
+  for (j=0; j<m; j++) {
+    beta = fmax(beta, fabs(sparse_AXZAt_ii(j, m, n, Adata, Aindptr, Aindices, x, z)));
   }
   beta = sqrt(beta);
   return beta;
@@ -265,7 +378,8 @@ __kernel void factor_primal_normal(int m, int n, __global real* A,
 }
 
 
-__kernel void sparse_factor_primal_normal(int m, int n, __global real* A,
+__kernel void sparse_factor_primal_normal(int m, int n,
+  __global real* Adata, __global int* Aindptr, __global int* Aindices,
   __global double* x, __global double* z, __global double* y,
   __global real* b, __global real* c, real mu,
   __global real* Ldata, __constant int* Lindptr, __constant int* Lindices,
@@ -300,12 +414,12 @@ __kernel void sparse_factor_primal_normal(int m, int n, __global real* A,
   double Dj, Lij, theta, beta;
   bool found;
 
-  beta = AXZAt_diag_absmax(m, n, A, x, z);
+  beta = sparse_AXZAt_diag_absmax(m, n, Adata, Aindptr, Aindices, x, z);
   //beta = 1.0;
 
   for (j=0; j<m; j++) {
     // iterate through the columns of the matrix
-    Dj = AXZAt_ii(j, m, n, gsize, gid, A, x, z);
+    Dj = sparse_AXZAt_ii(j, m, n, Adata, Aindptr, Aindices, x, z);
 
     for (k=Lindptr[j]; k<Lindptr[j+1]-1; k++) {
         Dj -= D[Lindices[k]*gsize+gid]*pown(Ldata[k*gsize+gid], 2);
@@ -332,7 +446,7 @@ __kernel void sparse_factor_primal_normal(int m, int n, __global real* A,
 
       if (found) {
         // only process columns that exist in this row
-        Lij = AXZAt_ij(i, j, m, n, gsize, gid, A, x, z);
+        Lij = sparse_AXZAt_ij(i, j, m, n, Adata, Aindptr, Aindices, x, z);
         // first indices for rows i and j
         ik = Lindptr[i];
         ikk = Lindptr[i+1];
@@ -423,9 +537,7 @@ __kernel void forward_backward_primal_normal(int m, int n, __global real* A,
 }
 
 
-__kernel void sparse_forward_backward_primal_normal(int m, int n, __global real* A,
-  __global double* x, __global double* z, __global double* y,
-  __global real* b, __global real* c, real mu,
+__kernel void sparse_forward_backward_primal_normal(int m, int n,
   __global real* Ldata, __constant int* Lindptr, __constant int* Lindices,
   __constant int* LTindptr, __constant int* LTindices, __constant int* LTmap,
   __global real* D, __global double* S, __global double* dy) {
@@ -541,7 +653,9 @@ __kernel void solve_primal_normal(int m, int n, __global real* A,
 }
 
 
-__kernel void sparse_solve_primal_normal(int m, int n, __global real* A,
+__kernel void sparse_solve_primal_normal(int m, int n,
+  __global real* Adata, __global int* Aindptr, __global int* Aindices,
+  __global real* ATdata, __global int* ATindptr, __global int* ATindices,
   __global double* x, __global double* z, __global double* y,
   __global real* b, __global real* c, real mu,
   __global real* Ldata, __constant int* Lindptr, __constant int* Lindices,
@@ -573,28 +687,26 @@ __kernel void sparse_solve_primal_normal(int m, int n, __global real* A,
   int gsize = get_global_size(0);
   double maxr;
   // Perform factorisation
-  sparse_factor_primal_normal(m, n, A, x, z, y, b, c, mu, Ldata, Lindptr, Lindices, D, delta);
+  sparse_factor_primal_normal(m, n, Adata, Aindptr, Aindices, x, z, y, b, c, mu, Ldata, Lindptr, Lindices, D, delta);
   // Initialise S to the RHS
   for (i=0; i<m; i++) {
     dy[i*gsize+gid] = 0.0;
-    S[i*gsize+gid] = primal_normal_rhs_i(i, m, n, gsize, gid, A, x, z, y, b, c, mu);
+    S[i*gsize+gid] = sparse_primal_normal_rhs_i(i, m, n, gsize, gid, Adata, Aindptr, Aindices, ATdata, ATindptr, ATindices, x, z, y, b, c, mu);
   }
   // Solve system
-  sparse_forward_backward_primal_normal(m, n, A, x, z, y, b, c, mu, Ldata, Lindptr, Lindices,
-                                        LTindptr, LTindices, LTmap, D, S, dy);
-
+  sparse_forward_backward_primal_normal(m, n, Ldata, Lindptr, Lindices, LTindptr, LTindices, LTmap, D, S, dy);
+/*
   // Update S to contain the residual
   maxr = residual_primal_normal(m, n, A, x, z, y, b, c, mu, dy, S);
 
   nref = 0;
   while (maxr > 1e-8 && nref < 5) {
     // Solve system
-    sparse_forward_backward_primal_normal(m, n, A, x, z, y, b, c, mu, Ldata, Lindptr, Lindices,
-                                        LTindptr, LTindices, LTmap, D, S, dy);
+    sparse_forward_backward_primal_normal(m, n, Ldata, Lindptr, Lindices, LTindptr, LTindices, LTmap, D, S, dy);
 
     // Update S to contain the residual
     maxr = residual_primal_normal(m, n, A, x, z, y, b, c, mu, dy, S);
     nref += 1;
   }
-
+*/
 }

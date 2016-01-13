@@ -8,7 +8,9 @@ __kernel void solve_primal_normal(int m, int n, __global real* A,
   __global real* L, __global real* D, __global double* S, __global double* dy,
   real delta);
 
-__kernel void sparse_solve_primal_normal(int m, int n, __global real* A,
+__kernel void sparse_solve_primal_normal(int m, int n,
+  __global real* Adata, __global int* Aindptr, __global int* Aindices,
+  __global real* ATdata, __global int* ATindptr, __global int* ATindices,
   __global double* x, __global double* z, __global double* y,
   __global real* b, __global real* c, real mu,
   __global real* Ldata, __constant int* Lindptr, __constant int* Lindices,
